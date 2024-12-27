@@ -1,0 +1,38 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Emotion_viva_api",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node dist/server.ts",
+    "build": "tsc",
+    "dev": "ts-node -r tsconfig-paths/register src/server.ts",
+    "init": "ts-node src/lib/db/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/mongodb": "^4.0.7",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2",
+    "mongodb": "^6.12.0",
+    "mongoose": "^8.9.2",
+    "mysql2": "^3.12.0",
+    "redis": "^4.7.0",
+    "reflect-metadata": "^0.2.2",
+    "sequelize": "^6.37.5",
+    "sequelize-typescript": "^2.1.6",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/ioredis": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@types/redis": "^4.0.11",
+    "@types/uuid": "^10.0.0",
+    "tsconfig-paths": "^4.2.0"
+  }
+}
