@@ -12,7 +12,12 @@ export class UserProfile extends Model {
   id!: string;
 
   @ForeignKey(() => User)
-  @Column({ type: DataType.UUID, allowNull: false })
+  @Column({
+    type: DataType.UUID,
+    allowNull: false,
+    unique: true,
+    field: 'userId'
+  })
   userId!: string;
 
   @Column({ type: DataType.ENUM('male', 'female', 'other') })
@@ -29,6 +34,8 @@ export class UserProfile extends Model {
 
   @Column({ type: DataType.STRING })
   moodStatus!: string;
+
+
 }
 
 export default UserProfile;

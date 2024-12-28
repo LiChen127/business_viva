@@ -13,7 +13,4 @@ app.use(bodyParser.json());
 app.use('/api/v1', OpenRouter);
 app.use('/api/v1/admin', AdminRouter);
 
-
-const port = process.env.PORT || 3000;
-
 export default app;

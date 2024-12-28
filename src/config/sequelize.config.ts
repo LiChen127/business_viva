@@ -27,6 +27,15 @@ const sequelize = new Sequelize(
   }
 );
 
+// // 定义模型关联
+// User.hasOne(UserProfile, {
+//   foreignKey: 'userId',
+//   as: 'profile'
+// });
+// UserProfile.belongsTo(User, {
+//   foreignKey: 'userId'
+// });
+
 // 初始化连接
 const init = async () => {
   try {

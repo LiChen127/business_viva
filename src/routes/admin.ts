@@ -59,7 +59,10 @@ AdminRouter.put("/updateUserProfile/:userId", authMiddleware, async (req, res) =
   logAPICall('updateUserProfile', req.url, req.body);
   await UserProfileController.updateUserProfile(req, res);
 })
-
-
+// CMS获取用户资料列表
+AdminRouter.get("/getUserProfileList", authMiddleware, async (req, res) => {
+  logAPICall('getUserProfileList', req.url, req.body);
+  await UserProfileController.getAllUserProfile(req, res);
+})
 
 export default AdminRouter;

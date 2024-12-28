@@ -1,10 +1,10 @@
 "use strict";
 import { Request, Response } from 'express';
-import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import UserService from '../service/db/user.service';
 import { User } from '@/db/models/User.model';
 import RedisHelper from '@/utils/redisHelper';
+import bcrypt from 'bcryptjs';
 import logger, { logUserAction, logError, logAPICall, } from '@/utils/logger';
 
 
@@ -13,14 +13,14 @@ import logger, { logUserAction, logError, logAPICall, } from '@/utils/logger';
  */
 
 export default class UserController {
-  static salt = crypto.randomBytes(16).toString('hex');
+  // static salt = crypto.randomBytes(16).toString('hex');
+  static saltRounds = 10;
   /**
    * 用户注册
    * @param req 
    * @param res 
    */
   static async signUp(req: Request, res: Response) {
-    const startTime = Date.now();
     const { username, nickname, password, role } = req.body as {
       username: string;
       nickname: string;
@@ -34,7 +34,7 @@ export default class UserController {
       })
     }
     // 密码加密
-    const passwordHash = crypto.pbkdf2Sync(password, UserController.salt, 1000, 64, 'sha512').toString('hex');
+    const passwordHash = await bcrypt.hash(password, UserController.saltRounds);
     const user = {
       username,
       nickname,
@@ -87,7 +87,7 @@ export default class UserController {
       })
     }
     try {
-      const passwordHash = crypto.pbkdf2Sync(password, UserController.salt, 1000, 64, 'sha512').toString('hex');
+      const passwordHash = await bcrypt.hash(password, UserController.saltRounds);
       logUserAction('resetPassword', userId, {
         passwordHash,
       });
@@ -125,8 +125,8 @@ export default class UserController {
       }
       // 验证密码
       const storedHash = userInfo.passwordHash;
-      const inputHash = crypto.pbkdf2Sync(password, UserController.salt, 1000, 64, 'sha512').toString('hex');
-      if (storedHash !== inputHash) {
+      const isMatch = await bcrypt.compare(password, storedHash);
+      if (!isMatch) {
         return res.status(401).json({
           code: 401,
           message: '密码错误',
