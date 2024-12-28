@@ -1,15 +1,13 @@
 
 type User = {
-  id: string; // 
-  userId: number;
-  nickname: string;
-  passwordHash: string;
-  profilePicture: string;
-  email: string;
-  username: string;
-  phone: string;
-  createdAt: Date;
-  updatedAt: Date;
+  id?: string; // 主键
+  username: string; // 电话号
+  nickname?: string; // 用户名 
+  passwordHash: string; // 密码
+  profilePicture?: string; // 头像
+  email?: string; // 邮箱
+  createdAt?: Date; // 创建时间
+  updatedAt: Date; // 更新时间
 }
 
 /**
@@ -70,4 +68,12 @@ type ActionsLog = {
   timeStamp: Date; // 操作时间
   createdAt: Date;
   updatedAt: Date;
+}
+
+export {
+  User,
+  UserProfile,
+  RecommendationRules,
+  ScheduledTasks,
+  ActionsLog
 }

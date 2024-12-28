@@ -1,6 +1,8 @@
 import { Table, Column, Model, DataType } from 'sequelize-typescript';
 import { v4 as uuidv4 } from 'uuid';
 
+
+
 @Table({
   tableName: 'Users',
   timestamps: true,
@@ -20,6 +22,7 @@ export class User extends Model {
   })
   username!: string;
 
+
   @Column({
     type: DataType.STRING,
     allowNull: true, // 明确允许为空
@@ -33,6 +36,13 @@ export class User extends Model {
   passwordHash!: string;
 
   @Column({
+    type: DataType.ENUM('admin', 'user', 'superAdmin'),
+    allowNull: false,
+    defaultValue: 'user',
+  })
+  role!: 'admin' | 'user' | 'superAdmin';
+
+  @Column({
     type: DataType.STRING,
     allowNull: true, // 明确允许为空
   })
@@ -44,13 +54,6 @@ export class User extends Model {
     allowNull: true, // 明确允许为空
   })
   email!: string;
-
-  @Column({
-    type: DataType.STRING,
-    unique: true,
-    allowNull: true, // 明确允许为空
-  })
-  phone!: string;
 }
 
 export default User;

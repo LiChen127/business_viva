@@ -38,7 +38,7 @@ const init = async () => {
     sequelize.addModels([User, ActionsLogs, RecommendationRules, ScheduledTasks, UserProfile]);
 
     // 如果需要同步表结构
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false });
     console.log('Database synchronized successfully.');
   } catch (error) {
     console.error('Unable to connect to the database:', error);
