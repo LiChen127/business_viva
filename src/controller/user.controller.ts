@@ -54,7 +54,6 @@ export default class UserController {
         username: newUser.username,
         nickname: newUser.nickname
       });
-      logAPICall('POST', req.url, Date.now() - startTime);
       const result = {
         userId: newUser.id,
         username: newUser.username,
@@ -89,6 +88,9 @@ export default class UserController {
     }
     try {
       const passwordHash = crypto.pbkdf2Sync(password, UserController.salt, 1000, 64, 'sha512').toString('hex');
+      logUserAction('resetPassword', userId, {
+        passwordHash,
+      });
       await UserService.updateUserOneField(userId, 'passwordHash', passwordHash);
       res.clearCookie('token');
       return res.status(200).json({
@@ -138,7 +140,9 @@ export default class UserController {
         maxAge: 3600000,
       }
       res.cookie('token', token, cookieOption);
-
+      logUserAction('login', userId, {
+        username: userInfo.username,
+      });
 
       return res.status(200).json({
         code: 200,
@@ -226,8 +230,8 @@ export default class UserController {
       email,
     } as User;
     try {
-      const newUser = await UserService.updateUser(userId, user);
-      logAPICall('PUT', req.url, Date.now() - startTime);
+      await UserService.updateUser(userId, user);
+      logUserAction('updateUserInfo', userId, user);
       return res.status(200).json({
         code: 200,
         message: '更新用户信息成功',
