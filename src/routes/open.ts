@@ -10,12 +10,22 @@ const OpenRouter = Router();
 /**
  * 用户注册
  */
-OpenRouter.post('/signup', UserController.signUp);
+OpenRouter.post('/signup', async (req, res) => {
+  await UserController.signUp(req, res);
+});
 
 /**
  * 用户登录
  */
-OpenRouter.post('/login', UserController.login);
+OpenRouter.post('/login', async (req, res) => {
+  await UserController.login(req, res);
+});
 
+/**
+ * 用户登出
+ */
+OpenRouter.post('/logout', async (req, res) => {
+  await UserController.logout(req, res);
+});
 
 export default OpenRouter;

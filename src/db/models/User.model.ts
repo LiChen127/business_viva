@@ -1,16 +1,14 @@
-import { Table, Column, Model, DataType } from 'sequelize-typescript';
+import { Table, Model, Column, DataType, PrimaryKey } from 'sequelize-typescript';
 import { v4 as uuidv4 } from 'uuid';
 
-
-
 @Table({
-  tableName: 'Users',
-  timestamps: true,
+  tableName: 'users',
+  timestamps: true
 })
 export class User extends Model {
   @Column({
     type: DataType.UUID,
-    defaultValue: () => uuidv4(), // 动态生成 UUID
+    defaultValue: () => uuidv4(),
     primaryKey: true,
   })
   id!: string;
@@ -22,10 +20,9 @@ export class User extends Model {
   })
   username!: string;
 
-
   @Column({
     type: DataType.STRING,
-    allowNull: true, // 明确允许为空
+    allowNull: true,
   })
   nickname!: string;
 
@@ -36,24 +33,23 @@ export class User extends Model {
   passwordHash!: string;
 
   @Column({
-    type: DataType.ENUM('admin', 'user', 'superAdmin'),
-    allowNull: false,
-    defaultValue: 'user',
+    type: DataType.STRING,
+    allowNull: true,
   })
-  role!: 'admin' | 'user' | 'superAdmin';
+  role!: string;
 
   @Column({
     type: DataType.STRING,
-    allowNull: true, // 明确允许为空
+    allowNull: true,
   })
-  profilePicture!: string;
+  profilePicture?: string;
 
   @Column({
     type: DataType.STRING,
+    allowNull: true,
     unique: true,
-    allowNull: true, // 明确允许为空
   })
-  email!: string;
+  email?: string;
 }
 
 export default User;

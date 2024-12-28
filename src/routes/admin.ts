@@ -3,7 +3,7 @@
  */
 
 import { Router } from 'express';
-import { authMIddleware } from '@/middleware/auth';
+import { authMiddleware } from '@/middleware/auth';
 import UserController from '@/controller/user.controller';
 
 
@@ -14,17 +14,25 @@ const AdminRouter = Router();
  */
 
 // 重置密码
-AdminRouter.post('/reset-password/:userId', authMIddleware, UserController.resetPassword);
+AdminRouter.post('/reset-password/:userId', authMiddleware, async (req, res) => {
+  await UserController.resetPassword(req, res);
+});
 // 获取用户列表
-AdminRouter.get('/users', authMIddleware, UserController.getUserList);
+AdminRouter.get('/getUserList', authMiddleware, async (req, res) => {
+  await UserController.getUserList(req, res);
+});
 // 获取用户信息
-AdminRouter.get('/users/:userId', authMIddleware, UserController.getUserInfo);
+AdminRouter.get('/getUserInfo/:userId', authMiddleware, async (req, res) => {
+  await UserController.getUserInfo(req, res);
+});
 // 删除用户
-AdminRouter.delete('/users/:userId', authMIddleware, UserController.deleteUser);
+AdminRouter.delete('/deleteUser/:userId', authMiddleware, async (req, res) => {
+  await UserController.deleteUser(req, res);
+});
 // 更新用户
-AdminRouter.put('/users/:userId', authMIddleware, UserController.updateUserInfo);
-// 登出
-AdminRouter.post('/logout', authMIddleware, UserController.logout);
+AdminRouter.put('/updateUserInfo/:userId', authMiddleware, async (req, res) => {
+  await UserController.updateUserInfo(req, res);
+});
 
 
 export default AdminRouter;

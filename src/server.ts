@@ -32,7 +32,7 @@ app.listen(port, async () => {
       console.error('Sequelize initialization failed:', e);
     }
 
-    console.log('Server is running on port', port);
+    console.log(`server is running in http://localhost:${port}`);
   } catch (error) {
     console.error('Server initialization failed:', error);
     process.exit(1);

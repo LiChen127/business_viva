@@ -1,29 +1,37 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
+import { BaseResponse } from '@/types/response';
 
-/**
- * 验证token
- * @param req 
- * @param res 
- * @param next 
- * @returns 
- */
-export const authMIddleware = (req: Request, res: Response, next: NextFunction) => {
-
-  const token = req.cookies.token || req.headers['authorization']?.split(' ')[1]
-
+export const authMiddleware = (
+  req: Request,
+  res: Response<BaseResponse>,
+  next: NextFunction
+): void => {
+  const token = req.headers.cookie?.split('=')[1];
   if (!token) {
-    return res.status(403).json({ message: 'No token provided' });
+    res.status(403).json({
+      code: 403,
+      message: '未提供令牌',
+    });
+    return;
   }
-
-  // jwt.verify(token, process.env.JWT_SECRET!, (err, decoded) => {
-  //   if (err) return res.status(401).json({ message: 'Unauthorized' });
-  // });
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    req.user = decoded;
-    next();
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'viva_jwt_secret');
+
+    if (decoded) {
+      next();
+    } else {
+      res.status(401).json({
+        code: 401,
+        message: '无效的令牌',
+      });
+      return;
+    }
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid token' });
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误',
+    });
+    return;
   }
-}
+};

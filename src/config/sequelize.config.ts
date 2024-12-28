@@ -16,9 +16,9 @@ const sequelizeConfig = {
 
 // 初始化 Sequelize 实例
 const sequelize = new Sequelize(
-  sequelizeConfig.database,
-  sequelizeConfig.username,
-  sequelizeConfig.password,
+  sequelizeConfig.database as string,
+  sequelizeConfig.username as string,
+  sequelizeConfig.password as string,
   {
     host: sequelizeConfig.host,
     port: sequelizeConfig.port,
