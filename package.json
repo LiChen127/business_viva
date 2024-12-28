@@ -22,6 +22,7 @@
     "express-session": "^1.18.1",
     "ioredis": "^5.4.2",
     "jsonwebtoken": "^9.0.2",
+    "logform": "^2.7.0",
     "mongodb": "^6.12.0",
     "mongoose": "^8.9.2",
     "mysql2": "^3.12.0",
@@ -29,7 +30,8 @@
     "reflect-metadata": "^0.2.2",
     "sequelize": "^6.37.5",
     "sequelize-typescript": "^2.1.6",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@types/ioredis": "^5.0.0",
