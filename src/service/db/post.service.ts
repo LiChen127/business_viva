@@ -3,7 +3,7 @@
  */
 
 import PostsModel, { Posts } from "@/db/models/Posts.model";
-
+import { Op } from "sequelize";
 
 class PostService {
   static async createPost(post: Partial<Posts>) {
@@ -14,10 +14,16 @@ class PostService {
     return await PostsModel.findOne({ where: { id: postId } });
   }
 
-  static async getPostList(userId: string, page?: number, pageSize?: number, search?: string) {
+  static async getPostByUserId(userId: string) {
+    return await PostsModel.findAll({ where: { userId } });
+  }
+
+  static async getPostListWithCondition(page?: string, pageSize?: string, search?: string, tags?: string[]) {
     const offset = page ? (Number(page) - 1) * Number(pageSize) : 0;
     const limit = pageSize ? Number(pageSize) : undefined;
-    return await PostsModel.findAll({ where: { userId }, offset, limit });
+    const where = search ? { title: { [Op.like]: `%${search}%` } } : {};
+    const whereTags = tags ? { tags: { [Op.contains]: tags } } : {};
+    return await PostsModel.findAndCountAll({ where: { ...where, ...whereTags }, offset, limit });
   }
 
   static async updatePost(postId: bigint, post: Partial<Posts>) {
@@ -30,6 +36,10 @@ class PostService {
 
   static async getAllPostsMeta() {
     return await PostsModel.findAll();
+  }
+
+  static async deletePost(postId: bigint) {
+    return await PostsModel.destroy({ where: { id: postId } });
   }
 }
 

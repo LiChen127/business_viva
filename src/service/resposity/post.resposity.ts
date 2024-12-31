@@ -8,7 +8,7 @@ class PostResposity {
     return await PostContentModel.create(post);
   }
 
-  static async getPostByPostId(postId: bigint[]) {
+  static async getPostByPostId(postId: bigint[] | bigint) {
     return await PostContentModel.find({ where: { postId } });
   }
 
@@ -22,7 +22,7 @@ class PostResposity {
   /**
    * 删除帖子内容
    */
-  static async deletePostContent(postId: string) {
+  static async deletePostContent(postId: bigint) {
     return await PostContentModel.findOneAndDelete({ postId });
   }
 }
