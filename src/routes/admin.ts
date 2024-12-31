@@ -201,46 +201,123 @@ AdminRouter.get('/getMediaList', authMiddleware, async (req, res) => {
 AdminRouter.get('/getUserMoodList', authMiddleware, async (req, res) => {
   logAPICall('getUserMoodList', req.url, req.body);
 })
-
 // 情绪追踪
 AdminRouter.get('/getMoodsTrace', authMiddleware, async (req, res) => {
   logAPICall('getMoodsTrace', req.url, req.body);
 })
-
 // 情绪日报/周报/月报/年报
 AdminRouter.post('/postMoodReport', authMiddleware, async (req, res) => {
   logAPICall('postMoodReport', req.url, req.body);
 })
-
 // 获取报告列表
 AdminRouter.get('/getMoodReportList', authMiddleware, async (req, res) => {
   logAPICall('getMoodReportList', req.url, req.body);
 })
-
 // 获取报告详情
 AdminRouter.get('/getMoodReportDetail/:moodReportId', authMiddleware, async (req, res) => {
   logAPICall('getMoodReportDetail', req.url, req.body);
 })
-
 // 删除报告
 AdminRouter.delete('/deleteMoodReport/:moodReportId', authMiddleware, async (req, res) => {
   logAPICall('deleteMoodReport', req.url, req.body);
 })
-
 // 每日收录情绪
 AdminRouter.post('/postDailyMood', authMiddleware, async (req, res) => {
   logAPICall('postDailyMood', req.url, req.body);
 })
-
 // 获取每日收录情绪列表
 AdminRouter.get('/getDailyMoodList', authMiddleware, async (req, res) => {
   logAPICall('getDailyMoodList', req.url, req.body);
 })
-
 // 平台实时监控每日用户情绪
 AdminRouter.get('/getDailyUserMood', authMiddleware, async (req, res) => {
   logAPICall('getDailyUserMood', req.url, req.body);
 })
+
+/**
+ * 等级相关
+ */
+// 某内容观看时长
+AdminRouter.get('/getArticleWatchTime', authMiddleware, async (req, res) => {
+  logAPICall('getArticleWatchTime', req.url, req.body);
+})
+// 某内容观看次数
+AdminRouter.get('/getArticleWatchCount', authMiddleware, async (req, res) => {
+  logAPICall('getArticleWatchCount', req.url, req.body);
+})
+// 内容观看总时长+次数
+AdminRouter.get('/getArticleWatchTotalCountAndTime', authMiddleware, async (req, res) => {
+  logAPICall('getArticleWatchTotalCountAndTime', req.url, req.body);
+})
+// 获取内容正在观看人数
+AdminRouter.get('/getCurrentArticleWatchingCount', authMiddleware, async (req, res) => {
+  logAPICall('getCurrentArticleWatchingCount', req.url, req.body);
+})
+// 内容分享次数
+AdminRouter.get('/getArticleShareCount', authMiddleware, async (req, res) => {
+  logAPICall('getArticleShareCount', req.url, req.body);
+})
+// 个人分享总次数
+AdminRouter.get('/getPersonalShareTotalCount', authMiddleware, async (req, res) => {
+  logAPICall('getPersonalShareTotalCount', req.url, req.body);
+})
+// 个人观看内容列表统计
+AdminRouter.get('/getPersonalWatchArticleList', authMiddleware, async (req, res) => {
+  logAPICall('getPersonalWatchArticleList', req.url, req.body);
+})
+// 个人分享内容列表统计
+AdminRouter.get('/getPersonalShareArticleList', authMiddleware, async (req, res) => {
+  logAPICall('getPersonalShareArticleList', req.url, req.body);
+})
+// 个人点赞内容列表统计
+AdminRouter.get('/getPersonalLikeArticleList', authMiddleware, async (req, res) => {
+  logAPICall('getPersonalLikeArticleList', req.url, req.body);
+})
+// 个人评论内容列表统计
+AdminRouter.get('/getPersonalCommentArticleList', authMiddleware, async (req, res) => {
+  logAPICall('getPersonalCommentArticleList', req.url, req.body);
+})
+// 个人收藏内容列表统计
+AdminRouter.get('/getPersonalCollectArticleList', authMiddleware, async (req, res) => {
+  logAPICall('getPersonalCollectArticleList', req.url, req.body);
+})
+// 个人举报内容列表统计
+AdminRouter.get('/getPersonalReportArticleList', authMiddleware, async (req, res) => {
+  logAPICall('getPersonalReportArticleList', req.url, req.body);
+})
+// 收藏内容
+AdminRouter.post('/collectArticle', authMiddleware, async (req, res) => {
+  logAPICall('collectArticle', req.url, req.body);
+})
+// 取消收藏内容
+AdminRouter.post('/cancelCollectArticle', authMiddleware, async (req, res) => {
+  logAPICall('cancelCollectArticle', req.url, req.body);
+})
+// 举报内容
+AdminRouter.post('/reportArticle', authMiddleware, async (req, res) => {
+  logAPICall('reportArticle', req.url, req.body);
+})
+// 取消举报内容
+AdminRouter.post('/cancelReportArticle', authMiddleware, async (req, res) => {
+  logAPICall('cancelReportArticle', req.url, req.body);
+})
+// 分享内容
+AdminRouter.post('/shareArticle', authMiddleware, async (req, res) => {
+  logAPICall('shareArticle', req.url, req.body);
+})
+// 取消分享内容
+AdminRouter.post('/cancelShareArticle', authMiddleware, async (req, res) => {
+  logAPICall('cancelShareArticle', req.url, req.body);
+})
+// 根据类型加积分
+AdminRouter.post('/addScoreByType', authMiddleware, async (req, res) => {
+  logAPICall('addScoreByType', req.url, req.body);
+})
+// 根据类型减积分
+AdminRouter.post('/subScoreByType', authMiddleware, async (req, res) => {
+  logAPICall('subScoreByType', req.url, req.body);
+})
+
 
 
 export default AdminRouter;

@@ -76,6 +76,31 @@ enum CrawlerStatus {
  * 爬虫数据
  */
 
+
+/**
+ * 帖子具体内容
+ */
+type PostContent = {
+  id: bigint;
+  postId: bigint;
+  content: Text;
+  tags: string[];
+  category: string
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 帖子评论
+ */
+type PostComment = {
+  id: bigint;
+  postId: bigint;
+  content: Text;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 type CrawlerData = {
   crawledId: number;
   crawledSource: string; // 爬虫来源

@@ -70,6 +70,117 @@ type ActionsLog = {
   updatedAt: Date;
 }
 
+/**
+ * 帖子
+ */
+type Posts = {
+  id: bigint;
+  userId: bigint;
+  title: string;
+  // content: string;
+  // tags: string[];
+  // category: string; // 基础信息存到Mysql，详细信息存到MongoDB
+  viewCount: number;
+  likeCount: number;
+  shareCount: number;
+  commentCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 帖子评论
+ */
+type PostComments = {
+  id: bigint;
+  postId: bigint;
+  userId: bigint;
+  // content: string;
+  likeCount: number;
+  shareCount: number;
+  commentCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 帖子点赞
+ */
+type PostLikes = {
+  id: bigint;
+  postId: bigint;
+  userId: bigint;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 帖子收藏
+ */
+type PostCollects = {
+  id: bigint;
+  postId: bigint;
+  userId: bigint;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 帖子举报
+ */
+type PostReports = {
+  id: bigint;
+  postId: bigint;
+  userId: bigint;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 帖子分享
+ */
+type PostShares = {
+  id: bigint;
+  postId: bigint;
+  userId: bigint;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 评论点赞
+ */
+type CommentLikes = {
+  id: bigint;
+  commentId: bigint;
+  userId: bigint;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 评论举报
+ */
+type CommentReports = {
+  id: bigint;
+  commentId: bigint;
+  userId: bigint;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * 评论分享
+ */
+type CommentShares = {
+  id: bigint;
+  commentId: bigint;
+  userId: bigint;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+
 export {
   User,
   UserProfile,
