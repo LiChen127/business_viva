@@ -1,7 +1,7 @@
 "use strict";
 
 import { sequelize } from '@/config/sequelize.config';
-import { UserProfileService } from '@/service/db/user.profile';
+import { UserProfileService } from '@/service/db/userProfile.service';
 import UserService from '@/service/db/user.service';
 import { logUserAction } from '@/utils/logger';
 import RedisHelper from '@/utils/redisHelper';

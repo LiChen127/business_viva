@@ -29,5 +29,6 @@ const PostContentSchema = new Schema(
 
 const PostContentModel = mongoose.model('PostContent', PostContentSchema);
 
+
 export default PostContentModel;
 
