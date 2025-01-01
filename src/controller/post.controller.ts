@@ -628,6 +628,7 @@ export default class PostController {
       return res.status(200).json({
         code: 200,
         message: '对评论进行评论/回复成功',
+        result,
       })
     } catch (error) {
       logError(error as Error, { postId, commentId, userId });
@@ -640,4 +641,60 @@ export default class PostController {
       mongooseSession.endSession();
     }
   }
+
+  /**
+   * 删除评论
+   */
+  static async deleteComment(req: Request, res: Response) {
+    const { commentId, userId } = req.body as {
+      commentId: string;
+      userId: string;
+    };
+    if (!commentId || !userId) {
+      return res.status(400).json({
+        code: 400,
+        message: '缺少必要参数',
+      })
+    }
+    const mongooseSession = await mongoose.startSession();
+    const transaction = await sequelize.transaction();
+    try {
+      // 开启会话
+      mongooseSession.startTransaction();
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          code: 404,
+          message: '用户不存在',
+        })
+      }
+      const comment = await CommentService.getCommentByCommentId(BigInt(commentId));
+      if (!comment) {
+        return res.status(404).json({
+          code: 404,
+          message: '评论不存在',
+        })
+      }
+      Promise.all([
+        CommentService.deleteComment(BigInt(commentId)),
+        CommentResposity.deleteComment(BigInt(commentId)),
+        mongooseSession.commitTransaction(),
+        transaction.commit(),
+      ]);
+      return res.status(200).json({
+        code: 200,
+        message: '删除评论成功',
+      })
+    } catch (error) {
+      logError(error as Error, { commentId, userId });
+      return res.status(500).json({
+        code: 500,
+        message: '删除评论失败',
+      })
+    } finally {
+      // 关闭会话
+      mongooseSession.endSession();
+    }
+  }
+
 }

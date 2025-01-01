@@ -12,6 +12,10 @@ class CommentResposity {
   static async getCommentByPostId(postId: bigint) {
     return await CommentContentModel.find({ where: { postId } });
   }
+
+  static async deleteComment(commentId: bigint) {
+    return await CommentContentModel.deleteOne({ commentId });
+  }
 }
 
 export default CommentResposity;
