@@ -13,6 +13,8 @@ import { Posts } from "@/db/models/Posts.model";
 import UserService from "@/service/db/user.service";
 import mongoose from "mongoose";
 import { sequelize } from "@/config/sequelize.config";
+import CommentService from "@/service/db/comment.service";
+import CommentResposity from "@/service/resposity/comment.resposity";
 
 
 export default class PostController {
@@ -32,11 +34,12 @@ export default class PostController {
         message: '缺少必要参数',
       })
     }
-    // mondodb会话
-    const mongooseSession = await mongoose.startSession();
-    // mysql事务
-    const transaction = await sequelize.transaction();
+    const [mongooseSession, transaction] = await Promise.all([
+      mongoose.startSession(),
+      sequelize.transaction(),
+    ]);
     try {
+      logUserAction('createPost_start_mongooseSession', userId, { title });
       // 开启会话
       mongooseSession.startTransaction();
       const user = await UserService.getUserById(userId);
@@ -60,6 +63,7 @@ export default class PostController {
         tags,
       };
       // 先存入mysql获取postId
+      logUserAction('createPost_insert_mysql', userId, { title });
       const postInMysql = await PostService.createPost(postToMysql);
       const postId = postInMysql.id;
       // 再存入mongodb
@@ -68,8 +72,11 @@ export default class PostController {
         content,
         tags,
       };
+      logUserAction('createPost_insert_mongodb', userId, { title });
       await PostResposity.createPost(postToMongodb);
+      // 提交会话
       await mongooseSession.commitTransaction();
+      // 提交mysql事务
       await transaction.commit();
       return res.status(200).json({
         code: 200,
@@ -297,6 +304,336 @@ export default class PostController {
       return res.status(500).json({
         code: 500,
         message: '删除帖子失败',
+      })
+    } finally {
+      // 关闭会话
+      mongooseSession.endSession();
+    }
+  }
+  /**
+   * 给帖子点赞
+   */
+  static async likePost(req: Request, res: Response) {
+    const { postId, userId } = req.body as {
+      postId: string;
+      userId: string;
+    };
+    if (!postId || !userId) {
+      return res.status(400).json({
+        code: 400,
+        message: '缺少必要参数',
+      })
+    }
+    try {
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          code: 404,
+          message: '用户不存在',
+        })
+      }
+      logUserAction('likePost', userId, { postId });
+      await PostService.addPostLikeCount(BigInt(postId));
+      return res.status(200).json({
+        code: 200,
+        message: '给帖子点赞成功',
+      })
+    } catch (error) {
+      logError(error as Error, { postId, userId });
+      return res.status(500).json({
+        code: 500,
+        message: '给帖子点赞失败',
+      })
+    }
+  }
+
+  /**
+   * 给帖子评论
+   */
+  static async makeCommentToPost(req: Request, res: Response) {
+    const { postId, userId, content } = req.body as {
+      postId: string;
+      userId: string;
+      content: string;
+    };
+    const redisKeyForPostGet = RedisHelper.defineKey('getCommentsInPostWithPostId', postId);
+    if (!postId || !userId || !content) {
+      return res.status(400).json({
+        code: 400,
+        message: '缺少必要参数',
+      })
+    }
+    const mongooseSession = await mongoose.startSession();
+    const transaction = await sequelize.transaction();
+    try {
+      logUserAction('makeCommentToPost_start_mongooseSession', userId, { postId });
+      // 开启会话
+      mongooseSession.startTransaction();
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          code: 404,
+          message: '用户不存在',
+        })
+      }
+      const post = await PostService.getPostById(BigInt(postId));
+      if (!post) {
+        return res.status(404).json({
+          code: 404,
+          message: '帖子不存在',
+        })
+      }
+      logUserAction('makeCommentToPost_clear_redis', userId, { postId });
+      // 先清除redis缓存
+      await RedisHelper.delete(redisKeyForPostGet);
+      // 先inset入mysql
+      logUserAction('makeCommentToPost_insert_mysql', userId, { postId });
+      const comment = await CommentService.createComment({
+        postId: BigInt(postId),
+        userId,
+      });
+      const commentId = comment.id;
+      // 再插入mongodb
+      logUserAction('makeCommentToPost_insert_mongodb', userId, { postId });
+      const result = await CommentResposity.createComment({
+        commentId,
+        postId: BigInt(postId),
+        content,
+      });
+      // 提交会话
+      await mongooseSession.commitTransaction();
+      // 提交mysql事务
+      await transaction.commit();
+      return res.status(200).json({
+        code: 200,
+        message: '给帖子评论成功',
+        result,
+      })
+    } catch (error) {
+      logError(error as Error, { postId, userId });
+    } finally {
+      // 关闭会话
+      mongooseSession.endSession();
+    }
+  }
+
+  /**
+   * 获取一个帖子的评论列表
+   */
+  static async getCommentsInPostWithPostId(req: Request, res: Response) {
+    const { postId, userId } = req.query as {
+      postId: string;
+      userId: string;
+    };
+    const redisKey = RedisHelper.defineKey('getCommentsInPostWithPostId', postId);
+    if (!postId || !userId) {
+      return res.status(400).json({
+        code: 400,
+        message: '缺少必要参数',
+      })
+    }
+    try {
+      if (await RedisHelper.get(redisKey)) {
+        return res.status(200).json({
+          code: 200,
+          message: '获取帖子评论列表成功',
+          result: await RedisHelper.get(redisKey),
+          dataFrom: 'redis',
+        })
+      }
+      const commentsId = (await CommentService.getCommentByPostId(BigInt(postId))).map(comment => comment.id);
+      const commentsContent = await CommentResposity.getCommentByCommentId(commentsId);
+      RedisHelper.set(redisKey, commentsContent, 60 * 2); // 两分钟缓存 
+      // @TODO: 这里如何应对更新？走了缓存了不能及时获取db了 resolved 待测试
+      return res.status(200).json({
+        code: 200,
+        message: '获取帖子评论列表成功',
+        comments: commentsContent,
+        dataFrom: 'db',
+      })
+    } catch (error) {
+      logError(error as Error, { postId, userId });
+      return res.status(500).json({
+        code: 500,
+        message: '获取帖子评论列表失败',
+      })
+    }
+  }
+
+  /**
+   * 获取当前用户评论列表
+   */
+  static async getUserComments(req: Request, res: Response) {
+    const userId = req.params.userId as string;
+    if (!userId) {
+      return res.status(400).json({
+        code: 400,
+        message: '缺少必要参数',
+      })
+    }
+    const redisKey = RedisHelper.defineKey('getUserComments', userId);
+    try {
+      if (await RedisHelper.get(redisKey)) {
+        return res.status(200).json({
+          code: 200,
+          message: '获取用户评论列表成功',
+          result: await RedisHelper.get(redisKey),
+          dataFrom: 'redis',
+        })
+      }
+      const commentsId = (await CommentService.getCommentByUserId(userId)).map(comment => comment.id);
+      const commentsContent = await CommentResposity.getCommentByCommentId(commentsId);
+      RedisHelper.set(redisKey, commentsContent, 60 * 2); // 两分钟缓存 
+      return res.status(200).json({
+        code: 200,
+        message: '获取用户评论列表成功',
+        comments: commentsContent,
+        dataFrom: 'db',
+      })
+    } catch (error) {
+      logError(error as Error, { userId });
+      return res.status(500).json({
+        code: 500,
+        message: '获取用户评论列表失败',
+      })
+    }
+  }
+
+  /**
+   * 对某条评论点赞
+   */
+  static async likeComment(req: Request, res: Response) {
+    const { commentId, userId } = req.body as {
+      commentId: string;
+      userId: string;
+    };
+    if (!commentId || !userId) {
+      return res.status(400).json({
+        code: 400,
+        message: '缺少必要参数',
+      })
+    }
+    try {
+      logUserAction('likeComment', userId, { commentId });
+      const comment = await CommentService.getCommentByCommentId(BigInt(commentId));
+      if (!comment) {
+        return res.status(404).json({
+          code: 404,
+          message: '评论不存在',
+        })
+      }
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          code: 404,
+          message: '用户不存在',
+        })
+      }
+      const result = await CommentService.addCommentLikeCount(BigInt(commentId));
+      return res.status(200).json({
+        code: 200,
+        message: '对评论点赞成功',
+        result,
+      })
+    } catch (error) {
+      logError(error as Error, { commentId, userId });
+      return res.status(500).json({
+        code: 500,
+        message: '对评论点赞失败',
+      })
+    }
+  }
+
+  /**
+   * 对评论进行评论/回复
+   * 这里的评论还是寄生于帖子，所以需要postId，之后看怎么重新设计
+   * 这里通过commentId来找到评论和user, 这样就保证了评论的唯一性
+   */
+  static async replyComment(req: Request, res: Response) {
+    const { postId, commentId, userId, content } = req.body as {
+      postId: string;
+      commentId: string;
+      userId: string;
+      content: string;
+    };
+    if (!postId || !commentId || !userId || !content) {
+      return res.status(400).json({
+        code: 400,
+        message: '缺少必要参数',
+      })
+    }
+    const mongooseSession = await mongoose.startSession();
+    const transaction = await sequelize.transaction();
+    try {
+      // 开启会话
+      mongooseSession.startTransaction();
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          code: 404,
+          message: '用户不存在',
+        })
+      }
+      const post = await PostService.getPostById(BigInt(postId));
+      if (!post) {
+        return res.status(404).json({
+          code: 404,
+          message: '帖子不存在',
+        })
+      }
+      const targetComment = await CommentService.getCommentByCommentId(BigInt(commentId));
+      if (!targetComment) {
+        return res.status(404).json({
+          code: 404,
+          message: '评论不存在',
+        })
+      }
+      const targetPerson = await UserService.getUserById(targetComment.userId);
+      if (!targetPerson) {
+        return res.status(404).json({
+          code: 404,
+          message: '被回复用户不存在',
+        })
+      }
+      // 先插入mysql
+      logUserAction('replyComment_insert_mysql', userId, { postId, commentId });
+      const newCommentInMysql = (await CommentService.createComment({
+        postId: BigInt(postId),
+        userId,
+      }));
+      const newCommentId = newCommentInMysql.id;
+      // 再插入mongodb
+      logUserAction('replyComment_insert_mongodb', userId, { postId, commentId });
+      await CommentResposity.createComment({
+        commentId: newCommentId,
+        postId: BigInt(postId),
+        content,
+      });
+      const result = {
+        targetPerson: {
+          ...targetPerson.toJSON(),
+        },
+        targetComment: {
+          ...targetComment.toJSON(),
+        },
+        newComment: {
+          ...newCommentInMysql.toJSON(),
+          content,
+        }
+      }
+      // 提交会话
+      await mongooseSession.commitTransaction();
+      // 提交mysql事务
+      await transaction.commit();
+      return res.status(200).json({
+        code: 200,
+        message: '对评论进行评论/回复成功',
+      })
+    } catch (error) {
+      logError(error as Error, { postId, commentId, userId });
+      return res.status(500).json({
+        code: 500,
+        message: '对评论进行评论/回复失败',
       })
     } finally {
       // 关闭会话

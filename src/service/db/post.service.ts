@@ -41,6 +41,10 @@ class PostService {
   static async deletePost(postId: bigint) {
     return await PostsModel.destroy({ where: { id: postId } });
   }
+
+  static async addPostLikeCount(postId: bigint) {
+    return await PostsModel.increment('likeCount', { where: { id: postId } });
+  }
 }
 
 export default PostService;
