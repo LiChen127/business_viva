@@ -697,4 +697,112 @@ export default class PostController {
     }
   }
 
+  /**
+   * 取消点赞帖子
+   */
+  static async cancelLikePost(req: Request, res: Response) {
+    const { postId, userId } = req.body as {
+      postId: string;
+      userId: string;
+    };
+    if (!postId || !userId) {
+      return res.status(400).json({
+        code: 400,
+        message: '缺少必要参数',
+      })
+    }
+    const mongooseSession = await mongoose.startSession();
+    const transaction = await sequelize.transaction();
+    try {
+      // 开启会话
+      mongooseSession.startTransaction();
+      const post = await PostService.getPostById(BigInt(postId));
+      if (!post) {
+        return res.status(404).json({
+          code: 404,
+          message: '帖子不存在',
+        })
+      }
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          code: 404,
+          message: '用户不存在',
+        })
+      }
+      Promise.all([
+        PostService.deletePostLikeCount(BigInt(postId)),
+        mongooseSession.commitTransaction(),
+        transaction.commit(),
+      ]);
+      return res.status(200).json({
+        code: 200,
+        message: '取消点赞帖子成功',
+      })
+    } catch (error) {
+      logError(error as Error, { postId, userId });
+    } finally {
+      // 关闭会话
+      mongooseSession.endSession();
+    }
+  }
+
+  /**
+   * 取消点赞评论
+   */
+  static async cancelLikeComment(req: Request, res: Response) {
+    const { commentId, userId, postId } = req.body as {
+      commentId: string;
+      userId: string;
+      postId: string;
+    };
+    if (!commentId || !userId || !postId) {
+      return res.status(400).json({
+        code: 400,
+        message: '缺少必要参数',
+      })
+    }
+    const mongooseSession = await mongoose.startSession();
+    const transaction = await sequelize.transaction();
+    try {
+      // 开启会话
+      mongooseSession.startTransaction();
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          code: 404,
+          message: '用户不存在',
+        })
+      }
+      const post = await PostService.getPostById(BigInt(postId));
+      if (!post) {
+        return res.status(404).json({
+          code: 404,
+          message: '帖子不存在',
+        })
+      }
+      const comment = await CommentService.getCommentByCommentId(BigInt(commentId));
+      if (!comment) {
+        return res.status(404).json({
+          code: 404,
+          message: '评论不存在',
+        })
+      }
+      Promise.all([
+        CommentService.deleteCommentLikeCount(BigInt(commentId)),
+        mongooseSession.commitTransaction(),
+        transaction.commit(),
+      ]);
+      return res.status(200).json({
+        code: 200,
+        message: '取消点赞评论成功',
+      })
+    } catch (error) {
+      logError(error as Error, { commentId, userId, postId });
+    } finally {
+      // 关闭会话
+      mongooseSession.endSession();
+    }
+  }
+
 }

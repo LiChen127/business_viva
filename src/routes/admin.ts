@@ -7,6 +7,7 @@ import { authMiddleware } from '@/middleware/auth';
 import UserController from '@/controller/user.controller';
 import UserProfileController from '@/controller/userProfile.controller';
 import { logAPICall } from '@/utils/logger';
+import PostController from '@/controller/post.controller';
 
 
 const AdminRouter = Router();
@@ -75,20 +76,25 @@ AdminRouter.get("/getUserProfileList", authMiddleware, async (req, res) => {
 /**
  * 帖子相关
  */
-// 获取当前帖子
-AdminRouter.get("/getPostList", authMiddleware, async (req, res) => {
-  logAPICall('getPostList', req.url, req.body);
-  // await PostController.getPostList(req, res);
+// 获取当前帖子内容
+AdminRouter.get("/getCurrentPostDetail", authMiddleware, async (req, res) => {
+  logAPICall('getCurrentPostDetail', req.url, req.body);
+  await PostController.getCurrentPostDetail(req, res);
 })
 // 发布帖子
 AdminRouter.post("/postPost", authMiddleware, async (req, res) => {
   logAPICall('postPost', req.url, req.body);
-  // await PostController.postPost(req, res);
+  await PostController.createPost(req, res);
 })
 // 删除帖子
 AdminRouter.delete('/deletePost', authMiddleware, async (req, res) => {
   logAPICall('deletePost', req.url, req.body);
-  // await PostController.deletePost(req, res);
+  await PostController.deletePost(req, res);
+})
+// 给帖子评论
+AdminRouter.post('/makeCommentToPost', authMiddleware, async (req, res) => {
+  logAPICall('makeCommentToPost', req.url, req.body);
+  await PostController.makeCommentToPost(req, res);
 })
 // 修改帖子(修改了就是重新发布)
 AdminRouter.put('/updatePost', authMiddleware, async (req, res) => {
@@ -96,17 +102,28 @@ AdminRouter.put('/updatePost', authMiddleware, async (req, res) => {
   // @todo: 这里面之后要调用create
   // await PostController.updatePost(req, res);
 })
+// 获取用户发帖列表
+AdminRouter.get('/getUserPosts/:userId', authMiddleware, async (req, res) => {
+  logAPICall('getUserPosts', req.url, req.body);
+  await PostController.getUserPosts(req, res);
+})
+// 获取帖子列表
+AdminRouter.get('/getPostsList/:userId', authMiddleware, async (req, res) => {
+  logAPICall('getPostsList', req.url, req.body);
+  await PostController.getPostsList(req, res);
+})
+
 /**
  * 点赞帖子
  */
 AdminRouter.post('/likePost', authMiddleware, async (req, res) => {
   logAPICall('likePost', req.url, req.body);
-  // await PostController.likePost(req, res);
+  await PostController.likePost(req, res);
 })
 // 取消点赞
 AdminRouter.delete('/cancelLikePost', authMiddleware, async (req, res) => {
   logAPICall('cancelLikePost', req.url, req.body);
-  // await PostController.cancelLikePost(req, res);
+  await PostController.cancelLikePost(req, res);
 })
 /**
  * 评论相关
@@ -114,33 +131,44 @@ AdminRouter.delete('/cancelLikePost', authMiddleware, async (req, res) => {
 // 用户评论
 AdminRouter.post('/postComment', authMiddleware, async (req, res) => {
   logAPICall('postComment', req.url, req.body);
-  // await CommentController.postComment(req, res);
+  await PostController.makeCommentToPost(req, res);
 })
 // 删除评论
 AdminRouter.delete('/deleteComment', authMiddleware, async (req, res) => {
   logAPICall('deleteComment', req.url, req.body);
-  // await CommentController.deleteComment(req, res);
+  await PostController.deleteComment(req, res);
 })
 // 点赞评论
 AdminRouter.post('/likeComment', authMiddleware, async (req, res) => {
   logAPICall('likeComment', req.url, req.body);
-  // await CommentController.likeComment(req, res);
+  await PostController.likeComment(req, res);
 })
 // 取消点赞评论
 AdminRouter.delete('/cancelLikeComment', authMiddleware, async (req, res) => {
   logAPICall('cancelLikeComment', req.url, req.body);
-  // await CommentController.cancelLikeComment(req, res);
+  await PostController.cancelLikeComment(req, res);
 })
 // 获取评论列表
 AdminRouter.get('/getCommentList', authMiddleware, async (req, res) => {
   logAPICall('getCommentList', req.url, req.body);
-  // await CommentController.getCommentList(req, res);
+  await PostController.getCommentsInPostWithPostId(req, res);
+})
+// 获取当前用户评论列表
+AdminRouter.get('/getUserComments/:userId', authMiddleware, async (req, res) => {
+  logAPICall('getUserComments', req.url, req.body);
+  await PostController.getUserComments(req, res);
+})
+// 回复评论
+AdminRouter.post('/replyComment', authMiddleware, async (req, res) => {
+  logAPICall('replyComment', req.url, req.body);
+  await PostController.replyComment(req, res);
 })
 // 帖子热点排行榜列表
 AdminRouter.get('/getHotPostList', authMiddleware, async (req, res) => {
   logAPICall('getHotPostList', req.url, req.body);
   // await PostController.getHotPostList(req, res);
 })
+
 
 /**
  * 树洞帖子审核相关

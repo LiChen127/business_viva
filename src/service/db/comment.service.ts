@@ -28,6 +28,10 @@ class CommentService {
   static async deleteComment(commentId: bigint) {
     return await CommentsModel.destroy({ where: { id: commentId } });
   }
+
+  static async deleteCommentLikeCount(commentId: bigint) {
+    return await CommentsModel.decrement('likeCount', { where: { id: commentId } });
+  }
 }
 
 
