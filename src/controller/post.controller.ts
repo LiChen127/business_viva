@@ -15,6 +15,7 @@ import mongoose from "mongoose";
 import { sequelize } from "@/config/sequelize.config";
 import CommentService from "@/service/db/comment.service";
 import CommentResposity from "@/service/resposity/comment.resposity";
+import client from '@/config/mongoodb.config';
 
 
 export default class PostController {
@@ -28,73 +29,91 @@ export default class PostController {
       content: string;
       tags?: string[];
     };
+
     if (!userId || !title || !content) {
       return res.status(400).json({
         code: 400,
         message: '缺少必要参数',
-      })
+      });
     }
-    const [mongooseSession, transaction] = await Promise.all([
-      mongoose.startSession(),
-      sequelize.transaction(),
-    ]);
+
+    // 获取 MongoDB 会话和 MySQL 事务
+    const mongoClient = await client.connect();
+    const mongoSession = mongoClient.startSession();
+    const transaction = await sequelize.transaction();
+
     try {
-      logUserAction('createPost_start_mongooseSession', userId, { title });
-      // 开启会话
-      mongooseSession.startTransaction();
+      logUserAction('createPost_start_session', userId, { title });
+      // 开启 MongoDB 会话事务
+      await mongoSession.startTransaction();
+
+      // 检查用户是否存在
       const user = await UserService.getUserById(userId);
       if (!user) {
         return res.status(404).json({
           code: 404,
           message: '用户不存在',
-        })
+        });
       }
-      // 查看是否有重复的帖子
+
+      // 检查帖子标题是否重复
       const currentPost = await PostService.getPostByTitle(title);
       if (currentPost) {
         return res.status(400).json({
           code: 400,
           message: '重名的帖子',
-        })
+        });
       }
+
+      // 1. 先存入 MySQL 获取 postId
       const postToMysql = {
         userId,
         title,
         tags,
       };
-      // 先存入mysql获取postId
       logUserAction('createPost_insert_mysql', userId, { title });
       const postInMysql = await PostService.createPost(postToMysql);
       const postId = postInMysql.id;
-      // 再存入mongodb
+
+      // 2. 再存入 MongoDB
+      const db = mongoClient.db('viva');
+      const postsCollection = db.collection('posts');
+
       const postToMongodb = {
         postId,
         content,
         tags,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
+
       logUserAction('createPost_insert_mongodb', userId, { title });
-      await PostResposity.createPost(postToMongodb);
-      // 提交会话
-      await mongooseSession.commitTransaction();
-      // 提交mysql事务
+      await postsCollection.insertOne(postToMongodb, { session: mongoSession });
+
+      // 提交事务
+      await mongoSession.commitTransaction();
       await transaction.commit();
+
       return res.status(200).json({
         code: 200,
         message: '发布帖子成功',
         postId,
-      })
+      });
+
     } catch (error) {
       logError(error as Error, { userId, title });
-      // 回滚事务和会话
+      // 回滚事务
       await transaction.rollback();
-      await mongooseSession.abortTransaction();
+      await mongoSession.abortTransaction();
+
       return res.status(500).json({
         code: 500,
         message: '发布帖子失败',
-      })
+      });
     } finally {
-      // 关闭会话
-      mongooseSession.endSession();
+      // 结束会话
+      await mongoSession.endSession();
+      await mongoClient.close();
     }
   }
   /**
