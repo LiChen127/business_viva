@@ -1,5 +1,5 @@
-# 基础镜像
-FROM node:20
+# 使用 alpine 版本的 node
+FROM node:20-alpine
 
 # 设置工作目录
 WORKDIR /app

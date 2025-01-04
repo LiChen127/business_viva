@@ -15,11 +15,11 @@ services:
       MYSQL_DATABASE: exampledb
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      MONGO_URI: mongodb://mongo:27017/exampledb
+      MONGODB_URI: mongodb://mongodb:27018/viva?replicaSet=rs0
     depends_on:
       - mysql
       - redis
-      - mongo
+      - mongodb
 
   mysql:
     image: mysql:8
@@ -38,14 +38,34 @@ services:
     volumes:
       - redis_data:/data
 
-  mongo:
-    image: mongo:6
+  mongodb:
+    image: mongo:latest
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
-      - mongo_data:/data/db
+      - mongodb_data:/data/db
+    healthcheck:
+      test: mongosh --eval "rs.status()"
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  mongo-init:
+    image: mongo:latest
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: >
+      mongosh --host mongodb:27017 --eval '
+        rs.initiate({
+          _id: "rs0",
+          members: [{ _id: 0, host: "mongodb:27017" }]
+        })
+      '
 
 volumes:
   mysql_data:
   redis_data:
-  mongo_data:
+  mongodb_data:

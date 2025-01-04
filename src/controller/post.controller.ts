@@ -11,11 +11,11 @@ import { logUserAction, logError } from "@/utils/logger";
 import { Request, Response } from "express";
 import { Posts } from "@/db/models/Posts.model";
 import UserService from "@/service/db/user.service";
-import mongoose from "mongoose";
+import mongoose, { startSession } from "mongoose";
 import { sequelize } from "@/config/sequelize.config";
 import CommentService from "@/service/db/comment.service";
 import CommentResposity from "@/service/resposity/comment.resposity";
-import client from '@/config/mongoodb.config';
+import client, { getDb } from '@/config/mongoodb.config';
 
 
 export default class PostController {
@@ -26,7 +26,7 @@ export default class PostController {
     const { userId, title, content, tags } = req.body as {
       userId: string;
       title: string;
-      content: string;
+      content: Text;
       tags?: string[];
     };
 
@@ -38,14 +38,13 @@ export default class PostController {
     }
 
     // 获取 MongoDB 会话和 MySQL 事务
-    const mongoClient = await client.connect();
-    const mongoSession = mongoClient.startSession();
-    const transaction = await sequelize.transaction();
+    const db = getDb();
+    let mongoSession: any;
+    let transaction: any;
 
     try {
-      logUserAction('createPost_start_session', userId, { title });
-      // 开启 MongoDB 会话事务
-      await mongoSession.startTransaction();
+      // 开启 MySQL 事务
+      transaction = await sequelize.transaction();
 
       // 检查用户是否存在
       const user = await UserService.getUserById(userId);
@@ -71,14 +70,11 @@ export default class PostController {
         title,
         tags,
       };
-      logUserAction('createPost_insert_mysql', userId, { title });
       const postInMysql = await PostService.createPost(postToMysql);
       const postId = postInMysql.id;
 
       // 2. 再存入 MongoDB
-      const db = mongoClient.db('viva');
       const postsCollection = db.collection('posts');
-
       const postToMongodb = {
         postId,
         content,
@@ -87,11 +83,17 @@ export default class PostController {
         updatedAt: new Date()
       };
 
-      logUserAction('createPost_insert_mongodb', userId, { title });
-      await postsCollection.insertOne(postToMongodb, { session: mongoSession });
+      // 根据环境决定是否使用事务
+      if (process.env.NODE_ENV === 'production') {
+        mongoSession = await client.startSession();
+        await mongoSession.startTransaction();
+        await postsCollection.insertOne(postToMongodb, { session: mongoSession });
+        await mongoSession.commitTransaction();
+      } else {
+        // 开发环境下直接插入
+        await postsCollection.insertOne(postToMongodb);
+      }
 
-      // 提交事务
-      await mongoSession.commitTransaction();
       await transaction.commit();
 
       return res.status(200).json({
@@ -103,17 +105,15 @@ export default class PostController {
     } catch (error) {
       logError(error as Error, { userId, title });
       // 回滚事务
-      await transaction.rollback();
-      await mongoSession.abortTransaction();
+      if (mongoSession) await mongoSession.abortTransaction();
+      if (transaction) await transaction.rollback();
 
       return res.status(500).json({
         code: 500,
         message: '发布帖子失败',
       });
     } finally {
-      // 结束会话
-      await mongoSession.endSession();
-      await mongoClient.close();
+      if (mongoSession) await mongoSession.endSession();
     }
   }
   /**

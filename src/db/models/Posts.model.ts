@@ -14,9 +14,8 @@ export class Posts extends Model {
   })
   id!: bigint;
 
-
   @Column({
-    type: DataType.TEXT,
+    type: DataType.STRING,
     allowNull: false,
   })
   title!: string;

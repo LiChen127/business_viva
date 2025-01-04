@@ -9,7 +9,9 @@
     "dev": "ts-node -r tsconfig-paths/register src/server.ts",
     "init": "ts-node src/lib/db/index.ts",
     "mysql:migrate": "npx sequelize-cli init",
-    "mysql:migrate:generate": "npx sequelize-cli migration:generate --name init-db"
+    "mysql:migrate:generate": "npx sequelize-cli migration:generate --name init-db",
+    "init-dev": "ts-node scripts/init-dev.ts",
+    "start-dev": "pnpm init-dev && pnpm dev"
   },
   "keywords": [],
   "author": "",

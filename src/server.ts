@@ -4,37 +4,34 @@ import app from './app';
 import { runMongodb } from './config/mongoodb.config';
 import { init as initSequelize } from './config/sequelize.config';
 import redisClient from './config/redis.config';
+
 const port = process.env.PORT || 3000;
 
-app.listen(port, async () => {
+async function initializeServer() {
   try {
-    console.log('Server starting...');
+    // 按顺序初始化各个服务
+    console.log('Initializing services...');
 
-    // 分别初始化每个服务并打印状态
-    try {
-      await runMongodb();
-      console.log('MongoDB initialized successfully');
-    } catch (e) {
-      console.error('MongoDB initialization failed:', e);
-    }
+    // 1. 初始化 MongoDB
+    await runMongodb();
+    console.log('MongoDB initialized successfully');
 
-    try {
-      await redisClient.ping();
-      console.log('Redis initialized successfully');
-    } catch (e) {
-      console.error('Redis initialization failed:', e);
-    }
+    // 2. 初始化 Redis
+    await redisClient.ping();
+    console.log('Redis initialized successfully');
 
-    try {
-      await initSequelize();
-      console.log('Sequelize initialized successfully');
-    } catch (e) {
-      console.error('Sequelize initialization failed:', e);
-    }
+    // 3. 初始化 Sequelize
+    await initSequelize();
+    console.log('Sequelize initialized successfully');
 
-    console.log(`server is running in http://localhost:${port}`);
+    // 启动服务器
+    app.listen(port, () => {
+      console.log(`Server is running on http://localhost:${port}`);
+    });
   } catch (error) {
     console.error('Server initialization failed:', error);
     process.exit(1);
   }
-});
+}
+
+initializeServer();
