@@ -19,7 +19,6 @@ const CommentContentSchema = new Schema(
     postId: {
       type: String,
       required: true,
-      unique: true, // 保证每个帖子评论唯一
       index: true,  // 提高查询效率
     },
     content: {
@@ -34,7 +33,7 @@ const CommentContentSchema = new Schema(
   }
 );
 
-const CommentContentModel = mongoose.model('CommentContent', CommentContentSchema);
+const CommentContentModel = mongoose.model('comments', CommentContentSchema);
 
 export default CommentContentModel;
 

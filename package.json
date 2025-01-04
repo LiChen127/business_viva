@@ -11,7 +11,16 @@
     "mysql:migrate": "npx sequelize-cli init",
     "mysql:migrate:generate": "npx sequelize-cli migration:generate --name init-db",
     "init-dev": "ts-node scripts/init-dev.ts",
-    "start-dev": "pnpm init-dev && pnpm dev"
+    "start-dev": "pnpm init-dev && pnpm dev",
+    "db:create": "ts-node scripts/db/manage.ts create:migration",
+    "db:seed:create": "ts-node scripts/db/manage.ts create:seed",
+    "db:migrate": "ts-node scripts/db/manage.ts migrate",
+    "db:migrate:undo": "ts-node scripts/db/manage.ts migrate:undo",
+    "db:seed": "ts-node scripts/db/manage.ts seed",
+    "db:reset": "ts-node scripts/db/manage.ts reset",
+    "db:mongo:indexes": "ts-node scripts/db/manage.ts mongo:indexes",
+    "db:mongo:list": "ts-node scripts/db/manage.ts mongo:collections",
+    "db:mongo:clean": "ts-node scripts/db/manage.ts mongo:clean"
   },
   "keywords": [],
   "author": "",
@@ -50,6 +59,7 @@
     "@types/node": "^22.10.2",
     "@types/redis": "^4.0.11",
     "@types/uuid": "^10.0.0",
+    "commander": "^13.0.0",
     "tsconfig-paths": "^4.2.0"
   }
 }

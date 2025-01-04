@@ -120,11 +120,11 @@ AdminRouter.post('/likePost', authMiddleware, async (req, res) => {
   logAPICall('likePost', req.url, req.body);
   await PostController.likePost(req, res);
 })
-// 取消点赞
-AdminRouter.delete('/cancelLikePost', authMiddleware, async (req, res) => {
-  logAPICall('cancelLikePost', req.url, req.body);
-  await PostController.cancelLikePost(req, res);
-})
+// // 取消点赞
+// AdminRouter.delete('/cancelLikePost', authMiddleware, async (req, res) => {
+//   logAPICall('cancelLikePost', req.url, req.body);
+//   await PostController.cancelLikePost(req, res);
+// })
 /**
  * 评论相关
  */
@@ -143,11 +143,11 @@ AdminRouter.post('/likeComment', authMiddleware, async (req, res) => {
   logAPICall('likeComment', req.url, req.body);
   await PostController.likeComment(req, res);
 })
-// 取消点赞评论
-AdminRouter.delete('/cancelLikeComment', authMiddleware, async (req, res) => {
-  logAPICall('cancelLikeComment', req.url, req.body);
-  await PostController.cancelLikeComment(req, res);
-})
+// // 取消点赞评论
+// AdminRouter.delete('/cancelLikeComment', authMiddleware, async (req, res) => {
+//   logAPICall('cancelLikeComment', req.url, req.body);
+//   await PostController.cancelLikeComment(req, res);
+// })
 // 获取评论列表
 AdminRouter.get('/getCommentList', authMiddleware, async (req, res) => {
   logAPICall('getCommentList', req.url, req.body);

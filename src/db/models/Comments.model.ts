@@ -21,7 +21,6 @@ export class Comments extends Model {
   @Column({
     type: DataType.UUID,
     allowNull: false,
-    unique: true,
     field: 'userId'
   })
   userId!: string;
@@ -30,7 +29,6 @@ export class Comments extends Model {
   @Column({
     type: DataType.BIGINT,
     allowNull: false,
-    unique: true,
     field: 'postId'
   })
   postId!: bigint;
