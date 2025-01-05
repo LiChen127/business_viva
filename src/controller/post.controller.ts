@@ -15,7 +15,7 @@ import { sequelize } from "@/config/sequelize.config";
 import CommentService from "@/service/db/comment.service";
 import CommentResposity from "@/service/resposity/comment.resposity";
 import client, { getDb } from '@/config/mongoodb.config';
-
+import { responseFormatHandler } from "@/utils/responseFormatHandler";
 
 export default class PostController {
   /**
@@ -30,10 +30,7 @@ export default class PostController {
     };
 
     if (!userId || !title || !content) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      });
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     let mongoSession: any;
     let transaction: any;
@@ -45,19 +42,13 @@ export default class PostController {
       // 检查用户是否存在
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        });
+        return responseFormatHandler(res, 404, '用户不存在');
       }
 
       // 检查帖子标题是否重复
       const currentPost = await PostService.getPostByTitle(title);
       if (currentPost) {
-        return res.status(400).json({
-          code: 400,
-          message: '重名的帖子',
-        });
+        return responseFormatHandler(res, 400, '重名的帖子');
       }
 
       // 1. 先存入 MySQL 获取 postId
@@ -78,23 +69,11 @@ export default class PostController {
         updatedAt: new Date()
       };
 
-      // // 根据环境决定是否使用事务
-      // if (process.env.NODE_ENV === 'production') {
-      //   mongoSession = await client.startSession();
-      //   await mongoSession.startTransaction();
-      //   await PostResposity.createPost(postToMongodb, mongoSession);
-      //   await mongoSession.commitTransaction();
-      // } else {
-      //   // 开发环境下直接插入
-      //   await PostResposity.createPost(postToMongodb);
-      // }
       const mongoResult = await PostResposity.createPost(postToMongodb);
 
       await transaction.commit();
 
-      return res.status(200).json({
-        code: 200,
-        message: '发布帖子成功',
+      return responseFormatHandler(res, 200, '发布帖子成功', {
         postId,
         mongoId: mongoResult._id
       });
@@ -105,10 +84,7 @@ export default class PostController {
       if (mongoSession) await mongoSession.abortTransaction();
       if (transaction) await transaction.rollback();
 
-      return res.status(500).json({
-        code: 500,
-        message: '发布帖子失败',
-      });
+      return responseFormatHandler(res, 500, '发布帖子失败');
     } finally {
       if (mongoSession) await mongoSession.endSession();
     }
@@ -122,59 +98,40 @@ export default class PostController {
       userId: string;
     };
     if (!postId || !userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     const redisKey = RedisHelper.defineKey('getCurrentPostDetail', postId);
     try {
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
       if (await RedisHelper.get(redisKey)) {
-        return res.status(200).json({
-          code: 200,
-          message: '获取帖子内容成功',
+        return responseFormatHandler(res, 200, '获取帖子内容成功', {
           data: await RedisHelper.get(redisKey),
           dataFrom: 'redis',
-        })
+        });
       }
       const postInMysql = await PostService.getPostById(BigInt(postId));
       if (!postInMysql) {
-        return res.status(404).json({
-          code: 404,
-          message: '帖子不存在',
-        })
+        return responseFormatHandler(res, 404, '帖子不存在');
       }
       const content = await PostResposity.getPostByPostId(Number(postId));
       if (!content) {
-        return res.status(404).json({
-          code: 404,
-          message: '帖子内容不存在',
-        })
+        return responseFormatHandler(res, 404, '帖子内容不存在');
       }
       const data = {
         ...postInMysql.toJSON(),
         content: content[0].content,
       }
       RedisHelper.set(redisKey, data);
-      return res.status(200).json({
-        code: 200,
-        message: '获取帖子内容成功',
+      return responseFormatHandler(res, 200, '获取帖子内容成功', {
         data,
         dataFrom: 'db',
-      })
+      });
     } catch (error) {
       logError(error as Error, { postId, userId });
-      return res.status(500).json({
-        code: 500,
-        message: '获取帖子内容失败',
-      })
+      return responseFormatHandler(res, 500, '获取帖子内容失败');
     }
   }
   /**
@@ -184,10 +141,7 @@ export default class PostController {
     const userId = req.params.userId;
     const redisKey = RedisHelper.defineKey('getPostsList', userId);
     if (!userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     const { page, pageSize, search, tags } = req.query as {
       page?: string;
@@ -206,12 +160,10 @@ export default class PostController {
             tags: string[];
             content: string;
           }[];
-          return res.status(200).json({
-            code: 200,
-            message: '获取全部帖子列表成功',
+          return responseFormatHandler(res, 200, '获取全部帖子列表成功', {
             data,
             dataFrom: 'redis',
-          })
+          });
         } else {
           const postsMeta = await PostService.getAllPostsMeta();
           const postIds = postsMeta.map(post => Number(post.id));
@@ -221,12 +173,10 @@ export default class PostController {
             content: postsContent[index] ? postsContent[index].content : '',
           }));
           RedisHelper.set(redisKey, data);
-          return res.status(200).json({
-            code: 200,
-            message: '获取全部帖子列表成功',
+          return responseFormatHandler(res, 200, '获取全部帖子列表成功', {
             data,
             dataFrom: 'db',
-          })
+          });
         }
       } else {
         const posts = await PostService.getPostListWithCondition(page, pageSize, search, tags);
@@ -234,19 +184,14 @@ export default class PostController {
           posts: posts.rows,
           total: posts.count,
         }
-        return res.status(200).json({
-          code: 200,
-          message: '获取帖子列表成功',
+        return responseFormatHandler(res, 200, '获取帖子列表成功', {
           data,
           dataFrom: 'db',
-        })
+        });
       }
     } catch (error) {
       logError(error as Error, { userId, page, pageSize, search });
-      return res.status(500).json({
-        code: 500,
-        message: '获取帖子列表失败',
-      })
+      return responseFormatHandler(res, 500, '获取帖子列表失败');
     }
   }
 
@@ -256,10 +201,7 @@ export default class PostController {
   static async getUserPosts(req: Request, res: Response) {
     const userId = req.params.userId as string;
     if (!userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       const postsInMysql = await PostService.getPostByUserId(userId);
@@ -268,17 +210,12 @@ export default class PostController {
         ...post.toJSON(),
         content: postsInMongodb[index] ? postsInMongodb[index].content : '',
       }));
-      return res.status(200).json({
-        code: 200,
-        message: '获取用户帖子成功',
+      return responseFormatHandler(res, 200, '获取用户帖子成功', {
         posts: data,
-      })
+      });
     } catch (error) {
       logError(error as Error, { userId });
-      return res.status(500).json({
-        code: 500,
-        message: '获取用户帖子失败',
-      })
+      return responseFormatHandler(res, 500, '获取用户帖子失败');
     }
   }
   /**
@@ -290,46 +227,27 @@ export default class PostController {
       userId: string;
     };
     if (!postId || !userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
-    // const mongooseSession = await mongoose.startSession();
     const transaction = await sequelize.transaction();
     try {
-      // 开启会话
-      // mongooseSession.startTransaction();
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
       const post = await PostService.getPostById(BigInt(postId));
       if (!post) {
-        return res.status(404).json({
-          code: 404,
-          message: '帖子不存在',
-        })
+        return responseFormatHandler(res, 404, '帖子不存在');
       }
       await PostService.deletePost(BigInt(postId));
       await PostResposity.deletePostContent(Number(postId));
-      // 而且要删除评论
       await CommentService.deleteCommentByPostId(BigInt(postId));
       await CommentResposity.deleteCommentByPostId(Number(postId));
       await transaction.commit();
-      return res.status(200).json({
-        code: 200,
-        message: '删除帖子成功',
-      })
+      return responseFormatHandler(res, 200, '删除帖子成功');
     } catch (error) {
       logError(error as Error, { postId, userId });
-      return res.status(500).json({
-        code: 500,
-        message: '删除帖子失败',
-      })
+      return responseFormatHandler(res, 500, '删除帖子失败');
     }
   }
   /**
@@ -341,49 +259,28 @@ export default class PostController {
       userId: string;
     };
     if (!postId || !userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       const post = await PostService.getPostById(BigInt(postId));
       if (!post) {
-        return res.status(404).json({
-          code: 404,
-          message: '帖子不存在',
-        })
+        return responseFormatHandler(res, 404, '帖子不存在');
       }
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
-      // 限制一个用户只能给一个帖子点赞一次
       const like = await PostService.getPostLikeCountWithUserId(BigInt(postId), userId);
-      console.log(like, 'like');
       if (like && like.likeCount === 1) {
-        // 其实这里直接取消点赞就行了
         await PostService.deletePostLikeCount(BigInt(postId));
-        return res.status(200).json({
-          code: 200,
-          message: '取消对帖子点赞成功',
-        })
+        return responseFormatHandler(res, 200, '取消对帖子点赞成功');
       }
       logUserAction('likePost', userId, { postId });
       await PostService.addPostLikeCount(BigInt(postId));
-      return res.status(200).json({
-        code: 200,
-        message: '给帖子点赞成功',
-      })
+      return responseFormatHandler(res, 200, '给帖子点赞成功');
     } catch (error) {
       logError(error as Error, { postId, userId });
-      return res.status(500).json({
-        code: 500,
-        message: '给帖子点赞失败',
-      })
+      return responseFormatHandler(res, 500, '给帖子点赞失败');
     }
   }
 
@@ -398,35 +295,21 @@ export default class PostController {
     };
     const redisKeyForPostGet = RedisHelper.defineKey('getCommentsInPostWithPostId', postId);
     if (!postId || !userId || !content) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
-    // const mongooseSession = await mongoose.startSession();
     const transaction = await sequelize.transaction();
     try {
       logUserAction('makeCommentToPost_start_mongooseSession', userId, { postId });
-      // 开启会话
-      // mongooseSession.startTransaction();
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
       const post = await PostService.getPostById(BigInt(postId));
       if (!post) {
-        return res.status(404).json({
-          code: 404,
-          message: '帖子不存在',
-        })
+        return responseFormatHandler(res, 404, '帖子不存在');
       }
       logUserAction('makeCommentToPost_clear_redis', userId, { postId });
-      // 先清除redis缓存
       await RedisHelper.delete(redisKeyForPostGet);
-      // 先inset入mysql
       logUserAction('makeCommentToPost_insert_mysql', userId, { postId });
       const comment = await CommentService.createComment({
         postId: BigInt(postId),
@@ -434,29 +317,18 @@ export default class PostController {
       });
       await PostService.addPostCommentCount(BigInt(postId));
       const commentId = comment.id;
-      // 再插入mongodb
       logUserAction('makeCommentToPost_insert_mongodb', userId, { postId });
       const data = await CommentResposity.createComment({
         commentId,
         postId: Number(postId),
         content,
       });
-      // 提交会话
-      // await mongooseSession.commitTransaction();
-      // 提交mysql事务
       await transaction.commit();
-      return res.status(200).json({
-        code: 200,
-        message: '给帖子评论成功',
-        data,
-      })
+      return responseFormatHandler(res, 200, '给帖子评论成功', { data });
     } catch (error) {
       logError(error as Error, { postId, userId });
+      return responseFormatHandler(res, 500, '给帖子评论失败');
     }
-    // } finally {
-    // 关闭会话
-    // mongooseSession.endSession();
-    // }
   }
 
   /**
@@ -470,44 +342,30 @@ export default class PostController {
     const redisKey = RedisHelper.defineKey('getCommentsInPostWithPostId', postId);
 
     if (!postId || !userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
       if (await RedisHelper.get(redisKey)) {
-        return res.status(200).json({
-          code: 200,
-          message: '获取帖子评论列表成功',
+        return responseFormatHandler(res, 200, '获取帖子评论列表成功', {
           data: await RedisHelper.get(redisKey),
           dataFrom: 'redis',
-        })
+        });
       }
       const commentsContent = await CommentResposity.getCommentByPostId(String(postId));
       if (commentsContent.length > 0) {
         RedisHelper.set(redisKey, commentsContent, 60 * 2); // 两分钟缓存 
       }
-      // @TODO: 这里如何应对更新？走了缓存了不能及时获取db了 resolved 待测试
-      return res.status(200).json({
-        code: 200,
-        message: '获取帖子评论列表成功',
+      return responseFormatHandler(res, 200, '获取帖子评论列表成功', {
         data: commentsContent,
         dataFrom: 'db',
-      })
+      });
     } catch (error) {
       logError(error as Error, { postId, userId });
-      return res.status(500).json({
-        code: 500,
-        message: '获取帖子评论列表失败',
-      })
+      return responseFormatHandler(res, 500, '获取帖子评论列表失败');
     }
   }
 
@@ -517,36 +375,26 @@ export default class PostController {
   static async getUserComments(req: Request, res: Response) {
     const userId = req.params.userId as string;
     if (!userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     const redisKey = RedisHelper.defineKey('getUserComments', userId);
     try {
       if (await RedisHelper.get(redisKey)) {
-        return res.status(200).json({
-          code: 200,
-          message: '获取用户评论列表成功',
+        return responseFormatHandler(res, 200, '获取用户评论列表成功', {
           data: await RedisHelper.get(redisKey),
           dataFrom: 'redis',
-        })
+        });
       }
       const commentsId = (await CommentService.getCommentByUserId(userId)).map(comment => Number(comment.id));
       const commentsContent = await CommentResposity.getCommentByCommentId(commentsId);
       RedisHelper.set(redisKey, commentsContent, 60 * 2); // 两分钟缓存 
-      return res.status(200).json({
-        code: 200,
-        message: '获取用户评论列表成功',
+      return responseFormatHandler(res, 200, '获取用户评论列表成功', {
         comments: commentsContent,
         dataFrom: 'db',
-      })
+      });
     } catch (error) {
       logError(error as Error, { userId });
-      return res.status(500).json({
-        code: 500,
-        message: '获取用户评论列表失败',
-      })
+      return responseFormatHandler(res, 500, '获取用户评论列表失败');
     }
   }
 
@@ -559,48 +407,28 @@ export default class PostController {
       userId: string;
     };
     if (!commentId || !userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       logUserAction('likeComment', userId, { commentId });
       const comment = await CommentService.getCommentByCommentId(BigInt(commentId));
       if (!comment) {
-        return res.status(404).json({
-          code: 404,
-          message: '评论不存在',
-        })
+        return responseFormatHandler(res, 404, '评论不存在');
       }
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
       const hasLiked = await CommentService.getCommentLikeCountWithUserId(comment.id, userId);
       if (hasLiked) {
-        // 其实这里直接取消点赞就行了
         await CommentService.deleteCommentLikeCount(comment.id);
-        return res.status(200).json({
-          code: 200,
-          message: '取消对评论点赞成功',
-        })
+        return responseFormatHandler(res, 200, '取消对评论点赞成功');
       }
       const data = await CommentService.addCommentLikeCount(BigInt(commentId));
-      return res.status(200).json({
-        code: 200,
-        message: '对评论点赞成功',
-        data,
-      })
+      return responseFormatHandler(res, 200, '对评论点赞成功', { data });
     } catch (error) {
       logError(error as Error, { commentId, userId });
-      return res.status(500).json({
-        code: 500,
-        message: '对评论点赞失败',
-      })
+      return responseFormatHandler(res, 500, '对评论点赞失败');
     }
   }
 
@@ -617,52 +445,32 @@ export default class PostController {
       content: string;
     };
     if (!postId || !commentId || !userId || !content) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
-    // const mongooseSession = await mongoose.startSession();
     const transaction = await sequelize.transaction();
     try {
-      // 开启会话
-      // mongooseSession.startTransaction();
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
       const post = await PostService.getPostById(BigInt(postId));
       if (!post) {
-        return res.status(404).json({
-          code: 404,
-          message: '帖子不存在',
-        })
+        return responseFormatHandler(res, 404, '帖子不存在');
       }
       const targetComment = await CommentService.getCommentByCommentId(BigInt(commentId));
       if (!targetComment) {
-        return res.status(404).json({
-          code: 404,
-          message: '评论不存在',
-        })
+        return responseFormatHandler(res, 404, '评论不存在');
       }
       const targetPerson = await UserService.getUserById(targetComment.userId);
       if (!targetPerson) {
-        return res.status(404).json({
-          code: 404,
-          message: '被回复用户不存在',
-        })
+        return responseFormatHandler(res, 404, '被回复用户不存在');
       }
-      // 先插入mysql
       logUserAction('replyComment_insert_mysql', userId, { postId, commentId });
       const newCommentInMysql = (await CommentService.createComment({
         postId: BigInt(postId),
         userId,
       }));
       const newCommentId = newCommentInMysql.id;
-      // 再插入mongodb
       logUserAction('replyComment_insert_mongodb', userId, { postId, commentId });
       await CommentResposity.createComment({
         commentId: newCommentId,
@@ -681,21 +489,11 @@ export default class PostController {
           content,
         }
       }
-      // 提交会话
-      // await mongooseSession.commitTransaction();
-      // 提交mysql事务
       await transaction.commit();
-      return res.status(200).json({
-        code: 200,
-        message: '对评论进行评论/回复成功',
-        data,
-      })
+      return responseFormatHandler(res, 200, '对评论进行评论/回复成功', { data });
     } catch (error) {
       logError(error as Error, { postId, commentId, userId });
-      return res.status(500).json({
-        code: 500,
-        message: '对评论进行评论/回复失败',
-      })
+      return responseFormatHandler(res, 500, '对评论进行评论/回复失败');
     }
   }
 
@@ -708,50 +506,27 @@ export default class PostController {
       userId: string;
     };
     if (!commentId || !userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
-    // const mongooseSession = await mongoose.startSession();
     const transaction = await sequelize.transaction();
     try {
-      // 开启会话
-      // mongooseSession.startTransaction();
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
       const comment = await CommentService.getCommentByCommentId(BigInt(commentId));
       if (!comment) {
-        return res.status(404).json({
-          code: 404,
-          message: '评论不存在',
-        })
+        return responseFormatHandler(res, 404, '评论不存在');
       }
       Promise.all([
         CommentService.deleteComment(BigInt(commentId)),
         CommentResposity.deleteComment(Number(commentId)),
-        // mongooseSession.commitTransaction(),
         transaction.commit(),
       ]);
-      return res.status(200).json({
-        code: 200,
-        message: '删除评论成功',
-      })
+      return responseFormatHandler(res, 200, '删除评论成功');
     } catch (error) {
       logError(error as Error, { commentId, userId });
-      return res.status(500).json({
-        code: 500,
-        message: '删除评论失败',
-      })
-      // } finally {
-      //   // 关闭会话
-      //   mongooseSession.endSession();
-      // }
+      return responseFormatHandler(res, 500, '删除评论失败');
     }
   }
 

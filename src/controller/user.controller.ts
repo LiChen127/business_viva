@@ -6,7 +6,7 @@ import { User } from '@/db/models/User.model';
 import RedisHelper from '@/utils/redisHelper';
 import bcrypt from 'bcryptjs';
 import logger, { logUserAction, logError, logAPICall, } from '@/utils/logger';
-
+import { responseFormatHandler } from '@/utils/responseFormatHandler';
 
 /**
  * 用户相关
@@ -28,10 +28,7 @@ export default class UserController {
       role: 'admin' | 'user' | 'superAdmin';
     };
     if (!username || !nickname || !password || !role) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     // 密码加密
     const passwordHash = await bcrypt.hash(password, UserController.saltRounds);
@@ -44,10 +41,7 @@ export default class UserController {
 
     try {
       if (await UserService.getUserByUsername(username)) {
-        return res.status(400).json({
-          code: 400,
-          message: '该用户已存在',
-        })
+        return responseFormatHandler(res, 400, '该用户已存在');
       }
       const newUser = await UserService.createUser(user);
       logUserAction('SIGNUP', newUser.id, {
@@ -59,20 +53,13 @@ export default class UserController {
         username: newUser.username,
         nickname: newUser.nickname,
       }
-      return res.status(201).json({
-        code: 201,
-        message: '注册成功',
-        user: result,
-      })
+      return responseFormatHandler(res, 201, '注册成功', result);
     } catch (error) {
       logError(
         error as Error,
         { username, nickname }
       )
-      return res.status(500).json({
-        code: 500,
-        message: '注册失败',
-      })
+      return responseFormatHandler(res, 500, '注册失败');
     }
   }
 
@@ -81,10 +68,7 @@ export default class UserController {
     const userId = req.params.userId;
     const password = req.body.password;
     if (!userId || !password) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       const passwordHash = await bcrypt.hash(password, UserController.saltRounds);
@@ -93,44 +77,29 @@ export default class UserController {
       });
       await UserService.updateUserOneField(userId, 'passwordHash', passwordHash);
       res.clearCookie('token');
-      return res.status(200).json({
-        code: 200,
-        message: '重置密码成功',
-      })
+      return responseFormatHandler(res, 200, '重置密码成功');
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        code: 500,
-        message: '重置密码失败',
-      })
+      return responseFormatHandler(res, 500, '重置密码失败');
     }
   }
 
   static async login(req: Request, res: Response) {
     const { userId, username, password } = req.body;
     if (!userId || !username || !password) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       // 获取用户信息
       const userInfo = await UserService.getUserById(userId);
       if (!userInfo) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
       // 验证密码
       const storedHash = userInfo.passwordHash;
       const isMatch = await bcrypt.compare(password, storedHash);
       if (!isMatch) {
-        return res.status(401).json({
-          code: 401,
-          message: '密码错误',
-        })
+        return responseFormatHandler(res, 401, '密码错误');
       }
       // 生成token传给cookie
       const token = jwt.sign({ userId, username }, process.env.JWT_SECRET || 'viva_jwt_secret', { expiresIn: '1h' });
@@ -144,66 +113,43 @@ export default class UserController {
         username: userInfo.username,
       });
 
-      return res.status(200).json({
-        code: 200,
-        message: '登录成功',
-      })
+      return responseFormatHandler(res, 200, '登录成功');
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        code: 500,
-        message: '登录失败',
-      })
+      return responseFormatHandler(res, 500, '登录失败');
     }
   }
 
   static async logout(req: Request, res: Response) {
     res.clearCookie('token');
-    return res.status(200).json({
-      code: 200,
-      message: '登出成功',
-    })
+    return responseFormatHandler(res, 200, '登出成功');
   }
 
   static async getUserInfo(req: Request, res: Response) {
     const userId = req.params.userId;
     if (!userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     const key = RedisHelper.defineKey(userId, 'user');
     if (await RedisHelper.get(key)) {
-      return res.status(200).json({
-        code: 200,
-        message: '获取用户信息成功',
+      return responseFormatHandler(res, 200, '获取用户信息成功', {
         user: await RedisHelper.get(key),
         dataFrom: 'redis',
-      })
+      });
     }
     try {
       const userInfo = await UserService.getUserById(userId);
       if (!userInfo) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在',
-        })
+        return responseFormatHandler(res, 404, '用户不存在');
       }
       await RedisHelper.set(key, userInfo, 60 * 10); // 10分钟
-      return res.status(200).json({
-        code: 200,
-        message: '获取用户信息成功',
+      return responseFormatHandler(res, 200, '获取用户信息成功', {
         user: userInfo,
         dataFrom: 'db',
-      })
+      });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        code: 500,
-        message: '获取用户信息失败',
-      })
-
+      return responseFormatHandler(res, 500, '获取用户信息失败');
     }
   }
 
@@ -211,17 +157,11 @@ export default class UserController {
     const userId = req.params.userId;
     const startTime = Date.now();
     if (!userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     const userInfo = await UserService.getUserById(userId);
     if (!userInfo) {
-      return res.status(404).json({
-        code: 404,
-        message: '用户不存在',
-      })
+      return responseFormatHandler(res, 404, '用户不存在');
     }
     const { nickname, profilePicture, email } = req.body;
     const user = {
@@ -232,51 +172,35 @@ export default class UserController {
     try {
       await UserService.updateUser(userId, user);
       logUserAction('updateUserInfo', userId, user);
-      return res.status(200).json({
-        code: 200,
-        message: '更新用户信息成功',
-      })
+      return responseFormatHandler(res, 200, '更新用户信息成功');
     } catch (error) {
       console.error(error);
       logError(error as Error, {
         userId,
         message: '更新用户信息失败',
       });
-      return res.status(500).json({
-        code: 500,
-        message: '更新用户信息失败',
-      })
+      return responseFormatHandler(res, 500, '更新用户信息失败');
     }
   }
 
   static async deleteUser(req: Request, res: Response) {
     const userId = req.params.userId;
     if (!userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       await UserService.deleteUser(userId);
       logUserAction('DELETE', userId, {
         username: userId,
       });
-      return res.status(200).json({
-        code: 200,
-        message: '删除用户成功',
-      })
-
+      return responseFormatHandler(res, 200, '删除用户成功');
     } catch (error) {
       console.error(error);
       logError(error as Error, {
         userId,
         message: '删除用户失败',
       });
-      return res.status(500).json({
-        code: 500,
-        message: '删除用户失败',
-      })
+      return responseFormatHandler(res, 500, '删除用户失败');
     }
   }
 
@@ -288,18 +212,10 @@ export default class UserController {
     };
     try {
       const userList = await UserService.getUserList(page, pageSize, search);
-      return res.status(200).json({
-        code: 200,
-        message: '获取用户列表成功',
-        userList,
-      })
+      return responseFormatHandler(res, 200, '获取用户列表成功', { userList });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        code: 500,
-        message: '获取用户列表失败',
-      })
-
+      return responseFormatHandler(res, 500, '获取用户列表失败');
     }
   }
 
