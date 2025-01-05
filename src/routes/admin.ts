@@ -8,6 +8,7 @@ import UserController from '@/controller/user.controller';
 import UserProfileController from '@/controller/userProfile.controller';
 import { logAPICall } from '@/utils/logger';
 import PostController from '@/controller/post.controller';
+import MoodController from '@/controller/mood.controller';
 
 
 const AdminRouter = Router();
@@ -234,24 +235,27 @@ AdminRouter.get('/getMoodsTrace', authMiddleware, async (req, res) => {
   logAPICall('getMoodsTrace', req.url, req.body);
 })
 // 情绪日报/周报/月报/年报
-AdminRouter.post('/postMoodReport', authMiddleware, async (req, res) => {
-  logAPICall('postMoodReport', req.url, req.body);
+AdminRouter.post('/postMoodRecord', authMiddleware, async (req, res) => {
+  logAPICall('postMoodRecord', req.url, req.body);
 })
 // 获取报告列表
-AdminRouter.get('/getMoodReportList', authMiddleware, async (req, res) => {
-  logAPICall('getMoodReportList', req.url, req.body);
+AdminRouter.get('/getMoodRecordList', authMiddleware, async (req, res) => {
+  logAPICall('getMoodRecordList', req.url, req.body);
 })
 // 获取报告详情
-AdminRouter.get('/getMoodReportDetail/:moodReportId', authMiddleware, async (req, res) => {
-  logAPICall('getMoodReportDetail', req.url, req.body);
+AdminRouter.get('/getMoodRecordDetail', authMiddleware, async (req, res) => {
+  logAPICall('getMoodRecordDetail', req.url, req.body);
+  await MoodController.getMoodDetail(req, res);
 })
 // 删除报告
-AdminRouter.delete('/deleteMoodReport/:moodReportId', authMiddleware, async (req, res) => {
-  logAPICall('deleteMoodReport', req.url, req.body);
+AdminRouter.delete('/deleteMoodRecord', authMiddleware, async (req, res) => {
+  logAPICall('deleteMoodRecord', req.url, req.body);
+  await MoodController.deleteMoodRecord(req, res);
 })
 // 每日收录情绪
 AdminRouter.post('/postDailyMood', authMiddleware, async (req, res) => {
   logAPICall('postDailyMood', req.url, req.body);
+  await MoodController.recordDayMood(req, res);
 })
 // 获取每日收录情绪列表
 AdminRouter.get('/getDailyMoodList', authMiddleware, async (req, res) => {
@@ -260,6 +264,11 @@ AdminRouter.get('/getDailyMoodList', authMiddleware, async (req, res) => {
 // 平台实时监控每日用户情绪
 AdminRouter.get('/getDailyUserMood', authMiddleware, async (req, res) => {
   logAPICall('getDailyUserMood', req.url, req.body);
+})
+// 更新情绪日记
+AdminRouter.post('/updateMoodRecordDetail', authMiddleware, async (req, res) => {
+  logAPICall('updateMoodRecordDetail', req.url, req.body);
+  await MoodController.updateRecordWithNote(req, res);
 })
 
 /**
@@ -310,8 +319,8 @@ AdminRouter.get('/getPersonalCollectArticleList', authMiddleware, async (req, re
   logAPICall('getPersonalCollectArticleList', req.url, req.body);
 })
 // 个人举报内容列表统计
-AdminRouter.get('/getPersonalReportArticleList', authMiddleware, async (req, res) => {
-  logAPICall('getPersonalReportArticleList', req.url, req.body);
+AdminRouter.get('/getPersonalRecordArticleList', authMiddleware, async (req, res) => {
+  logAPICall('getPersonalRecordArticleList', req.url, req.body);
 })
 // 收藏内容
 AdminRouter.post('/collectArticle', authMiddleware, async (req, res) => {
@@ -322,12 +331,12 @@ AdminRouter.post('/cancelCollectArticle', authMiddleware, async (req, res) => {
   logAPICall('cancelCollectArticle', req.url, req.body);
 })
 // 举报内容
-AdminRouter.post('/reportArticle', authMiddleware, async (req, res) => {
-  logAPICall('reportArticle', req.url, req.body);
+AdminRouter.post('/RecordArticle', authMiddleware, async (req, res) => {
+  logAPICall('RecordArticle', req.url, req.body);
 })
 // 取消举报内容
-AdminRouter.post('/cancelReportArticle', authMiddleware, async (req, res) => {
-  logAPICall('cancelReportArticle', req.url, req.body);
+AdminRouter.post('/cancelRecordArticle', authMiddleware, async (req, res) => {
+  logAPICall('cancelRecordArticle', req.url, req.body);
 })
 // 分享内容
 AdminRouter.post('/shareArticle', authMiddleware, async (req, res) => {
