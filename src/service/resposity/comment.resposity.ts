@@ -12,7 +12,7 @@ class CommentResposity {
   static async getCommentByPostId(postId: String) {
     const comments = await CommentContentModel.find({ where: { postId } });
     console.log(comments, 'comments');
-    return comments.map(comment => comment.toJSON());
+    return comments;
   }
 
   static async deleteComment(commentId: Number) {

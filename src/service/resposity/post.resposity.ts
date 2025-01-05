@@ -8,8 +8,6 @@ import { logError } from "@/utils/logger";
 class PostResposity {
   static async createPost(post: any, session?: any) {
     try {
-      console.log('Creating post with data:', post);
-
       const postDoc = new PostContentModel(post);
       const validationError = postDoc.validateSync();
       if (validationError) {
@@ -19,13 +17,10 @@ class PostResposity {
 
       if (session) {
         const result = await PostContentModel.create([post], { session });
-        console.log('Post created with session:', result);
         return result[0];
       }
 
-      const result = await PostContentModel.create(post);
-      console.log('Post created:', result);
-      return result;
+      return await PostContentModel.create(post);
     } catch (error) {
       console.error('Error creating post:', error);
       logError(error as Error, { post });
@@ -36,7 +31,6 @@ class PostResposity {
   static async getPostByPostId(postId: number[] | number) {
     try {
       const result = await PostContentModel.find({ postId });
-      console.log('Found posts:', result);
       return result;
     } catch (error) {
       console.error('Error finding post:', error);

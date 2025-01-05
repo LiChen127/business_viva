@@ -209,6 +209,7 @@ export default class PostController {
       const data = postsInMysql.map((post, index) => ({
         ...post.toJSON(),
         content: postsInMongodb[index] ? postsInMongodb[index].content : '',
+        tags: postsInMongodb[index] ? postsInMongodb[index].tags : '',
       }));
       return responseFormatHandler(res, 200, '获取用户帖子成功', {
         posts: data,
@@ -356,6 +357,7 @@ export default class PostController {
         });
       }
       const commentsContent = await CommentResposity.getCommentByPostId(String(postId));
+      console.log(commentsContent, 'commentContent');
       if (commentsContent.length > 0) {
         RedisHelper.set(redisKey, commentsContent, 60 * 2); // 两分钟缓存 
       }
