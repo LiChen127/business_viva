@@ -40,7 +40,7 @@ class PostResposity {
   /**
    * 更新帖子内容
    */
-  static async updatePostContent(postId: string, updatedContent: any) {
+  static async updatePostContent(postId: number, updatedContent: any) {
     return await PostContentModel.findOneAndUpdate(
       { postId },
       updatedContent,

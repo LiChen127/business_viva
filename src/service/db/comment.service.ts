@@ -2,7 +2,7 @@ import Comments from "@/db/models/Comments.model";
 
 class CommentService {
   static async createComment(comment: {
-    postId: bigint;
+    postId: string;
     userId: string;
   }) {
     const result = await Comments.create({
@@ -22,7 +22,7 @@ class CommentService {
     return await Comments.findAll({ where: { userId } });
   }
 
-  static async getCommentByCommentId(commentId: bigint) {
+  static async getCommentByCommentId(commentId: string) {
     return await Comments.findOne({ where: { id: commentId } });
   }
 
@@ -48,8 +48,8 @@ class CommentService {
     return -1;
   }
 
-  static async addCommentCount(postId: bigint) {
-    return await Comments.increment('commentCount', { where: { postId } });
+  static async addCommentCount(commentId: bigint) {
+    return await Comments.increment('commentCount', { where: { id: commentId } });
   }
 
   static async deleteCommentByPostId(postId: bigint) {

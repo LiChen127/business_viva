@@ -241,7 +241,7 @@ export default class PostController {
       await PostService.deletePost(BigInt(postId));
       await PostResposity.deletePostContent(Number(postId));
       await CommentService.deleteCommentByPostId(BigInt(postId));
-      await CommentResposity.deleteCommentByPostId(Number(postId));
+      await CommentResposity.deleteCommentByPostId(String(postId));
       await transaction.commit();
       return responseFormatHandler(res, 200, '删除帖子成功');
     } catch (error) {
@@ -270,7 +270,7 @@ export default class PostController {
         return responseFormatHandler(res, 404, '用户不存在');
       }
       const like = await PostService.getPostLikeCountWithUserId(BigInt(postId), userId);
-      if (like && like.likeCount === 1) {
+      if (like && like.likeCount == 1) {
         await PostService.deletePostLikeCount(BigInt(postId));
         return responseFormatHandler(res, 200, '取消对帖子点赞成功');
       }
@@ -311,7 +311,7 @@ export default class PostController {
       await RedisHelper.delete(redisKeyForPostGet);
       logUserAction('makeCommentToPost_insert_mysql', userId, { postId });
       const comment = await CommentService.createComment({
-        postId: BigInt(postId),
+        postId: String(postId),
         userId,
       });
       await PostService.addPostCommentCount(BigInt(postId));
@@ -355,7 +355,6 @@ export default class PostController {
         });
       }
       const commentsContent = await CommentResposity.getCommentByPostId(String(postId));
-      console.log(commentsContent, 'commentContent');
       if (commentsContent.length > 0) {
         RedisHelper.set(redisKey, commentsContent, 60 * 2); // 两分钟缓存 
       }
@@ -385,7 +384,7 @@ export default class PostController {
           dataFrom: 'redis',
         });
       }
-      const commentsId = (await CommentService.getCommentByUserId(userId)).map(comment => Number(comment.id));
+      const commentsId = (await CommentService.getCommentByUserId(userId)).map(comment => String(comment.id));
       const commentsContent = await CommentResposity.getCommentByCommentId(commentsId);
       RedisHelper.set(redisKey, commentsContent, 60 * 2); // 两分钟缓存 
       return responseFormatHandler(res, 200, '获取用户评论列表成功', {
@@ -411,7 +410,7 @@ export default class PostController {
     }
     try {
       logUserAction('likeComment', userId, { commentId });
-      const comment = await CommentService.getCommentByCommentId(BigInt(commentId));
+      const comment = await CommentService.getCommentByCommentId(String(commentId));
       if (!comment) {
         return responseFormatHandler(res, 404, '评论不存在');
       }
@@ -420,7 +419,7 @@ export default class PostController {
         return responseFormatHandler(res, 404, '用户不存在');
       }
       const hasLiked = await CommentService.getCommentLikeCountWithUserId(comment.id, userId);
-      if (hasLiked) {
+      if (hasLiked && hasLiked.likeCount == 1) {
         await CommentService.deleteCommentLikeCount(comment.id);
         return responseFormatHandler(res, 200, '取消对评论点赞成功');
       }
@@ -457,7 +456,7 @@ export default class PostController {
       if (!post) {
         return responseFormatHandler(res, 404, '帖子不存在');
       }
-      const targetComment = await CommentService.getCommentByCommentId(BigInt(commentId));
+      const targetComment = await CommentService.getCommentByCommentId(String(commentId));
       if (!targetComment) {
         return responseFormatHandler(res, 404, '评论不存在');
       }
@@ -467,16 +466,17 @@ export default class PostController {
       }
       logUserAction('replyComment_insert_mysql', userId, { postId, commentId });
       const newCommentInMysql = (await CommentService.createComment({
-        postId: BigInt(postId),
+        postId: String(postId),
         userId,
       }));
       const newCommentId = newCommentInMysql.id;
       logUserAction('replyComment_insert_mongodb', userId, { postId, commentId });
       await CommentResposity.createComment({
-        commentId: newCommentId,
-        postId: BigInt(postId),
+        commentId: String(newCommentId),
+        postId: String(postId),
         content,
       });
+      await CommentService.addCommentCount(BigInt(commentId));
       const data = {
         targetPerson: {
           ...targetPerson.toJSON(),
@@ -514,18 +514,23 @@ export default class PostController {
       if (!user) {
         return responseFormatHandler(res, 404, '用户不存在');
       }
-      const comment = await CommentService.getCommentByCommentId(BigInt(commentId));
+      const comment = await CommentService.getCommentByCommentId(String(commentId));
       if (!comment) {
         return responseFormatHandler(res, 404, '评论不存在');
       }
-      Promise.all([
-        CommentService.deleteComment(BigInt(commentId)),
-        CommentResposity.deleteComment(Number(commentId)),
-        transaction.commit(),
-      ]);
+      // Promise.all([
+      //   CommentService.deleteComment(BigInt(commentId)),
+      //   CommentResposity.deleteComment(String(commentId)),
+      //   transaction.commit(),
+      // ]);
+      await CommentService.deleteComment(BigInt(commentId));
+      await CommentResposity.deleteComment(String(commentId));
+      await transaction.commit();
       return responseFormatHandler(res, 200, '删除评论成功');
     } catch (error) {
       logError(error as Error, { commentId, userId });
+      // 回滚
+      await transaction.rollback();
       return responseFormatHandler(res, 500, '删除评论失败');
     }
   }

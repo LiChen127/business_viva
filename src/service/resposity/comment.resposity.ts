@@ -5,21 +5,21 @@ class CommentResposity {
     return await CommentContentModel.create(comment);
   }
 
-  static async getCommentByCommentId(commentId: Number[]) {
-    return await CommentContentModel.find({ where: { commentId } });
+  static async getCommentByCommentId(commentId: string[]) {
+    return await CommentContentModel.find({ commentId: commentId });
   }
 
-  static async getCommentByPostId(postId: String) {
-    const comments = await CommentContentModel.find({ where: { postId } });
-    console.log(comments, 'comments');
+  static async getCommentByPostId(postId: string) {
+    const comments = await CommentContentModel.find({ postId: postId });
+    console.log(comments, '??');
     return comments;
   }
 
-  static async deleteComment(commentId: Number) {
+  static async deleteComment(commentId: string) {
     return await CommentContentModel.deleteOne({ commentId });
   }
 
-  static async deleteCommentByPostId(postId: Number) {
+  static async deleteCommentByPostId(postId: string) {
     return await CommentContentModel.deleteMany({ postId });
   }
 }
