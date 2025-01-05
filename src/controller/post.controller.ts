@@ -98,7 +98,7 @@ export default class PostController {
     if (!postId || !userId) {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
-    const redisKey = RedisHelper.defineKey('getCurrentPostDetail', postId);
+    const redisKey = RedisHelper.defineKey(postId, 'getCurrentPostDetail');
     try {
       const user = await UserService.getUserById(userId);
       if (!user) {
@@ -137,7 +137,7 @@ export default class PostController {
    */
   static async getPostsList(req: Request, res: Response) {
     const userId = req.params.userId;
-    const redisKey = RedisHelper.defineKey('getPostsList', userId);
+    const redisKey = RedisHelper.defineKey(userId, 'getPostsList');
     if (!userId) {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
@@ -292,7 +292,7 @@ export default class PostController {
       userId: string;
       content: string;
     };
-    const redisKeyForPostGet = RedisHelper.defineKey('getCommentsInPostWithPostId', postId);
+    const redisKeyForPostGet = RedisHelper.defineKey(postId, 'getCommentsInPostWithPostId');
     if (!postId || !userId || !content) {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
@@ -338,7 +338,7 @@ export default class PostController {
       postId: string;
       userId: string;
     };
-    const redisKey = RedisHelper.defineKey('getCommentsInPostWithPostId', postId);
+    const redisKey = RedisHelper.defineKey(postId, 'getCommentsInPostWithPostId');
 
     if (!postId || !userId) {
       return responseFormatHandler(res, 400, '缺少必要参数');
@@ -377,7 +377,7 @@ export default class PostController {
     if (!userId) {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
-    const redisKey = RedisHelper.defineKey('getUserComments', userId);
+    const redisKey = RedisHelper.defineKey(userId, 'getUserComments');
     try {
       if (await RedisHelper.get(redisKey)) {
         return responseFormatHandler(res, 200, '获取用户评论列表成功', {
