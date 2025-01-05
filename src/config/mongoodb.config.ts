@@ -1,34 +1,49 @@
 import { MongoClient, ServerApiVersion, Db } from 'mongodb';
-import mongoose from 'mongoose';
+import mongoose, { model } from 'mongoose';
 
 const URI = process.env.NODE_ENV === 'production'
   ? 'mongodb://mongodb:27018/viva?replicaSet=rs0'
   : 'mongodb://localhost:27018/viva?replicaSet=rs0&directConnection=true';
 
+// 导入schema
+import CommentContentModel from '@/db/collection/CommentContent.schema';
+import PostContentModel from '@/db/collection/PostContent.schema';
+import ContentModel from '@/db/collection/Content.schema';
+import UserInteractionsModel from '@/db/collection/UserInteractions.schema';
+import MediaResourceModel from '@/db/collection/MediaResource.schema';
+import CrawledDataModel from '@/db/collection/CrawledData.schema';
+
+
 export const client = new MongoClient(URI, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: false,
-    deprecationErrors: true,
+    deprecationErrors: true, // 报告弃用警告
   }
 });
 
+const collections = [
+  { name: 'posts', model: PostContentModel },
+  { name: 'comments', model: CommentContentModel },
+  { name: 'contents', model: ContentModel },
+  { name: 'mediaResources', model: MediaResourceModel },
+  { name: 'userInteractions', model: UserInteractionsModel },
+  { name: 'crawledData', model: CrawledDataModel },
+];
+
 let db: Db;
 
-export async function runMongodb() {
+export const runMongodb = async () => {
   try {
-    // 连接 MongoDB 原生客户端
     await client.connect();
     db = client.db('viva');
-
-    // 连接 Mongoose，设置不自动创建集合
     await mongoose.connect(URI, {
-      autoCreate: false, // 禁用自动创建集合
-    });
+      autoCreate: false, // 禁止自动创建集合
+    })
     console.log('Mongoose connected successfully');
-
     // 验证副本集状态
     const adminDb = client.db('admin');
+    // 重试次数
     let retries = 5;
     while (retries > 0) {
       try {
@@ -43,87 +58,50 @@ export async function runMongodb() {
       }
       retries--;
     }
+    // 检查是否需要初始化集合
+    const currentCollections = await db.listCollections().toArray();
 
-    // // 检查是否需要初始化集合
-    // const collections = await listCollections();
-    // if (collections.length === 0) {
-    //   console.log('First time initialization, creating collections...');
-    //   await initializeCollections();
-    // } else {
-    //   console.log('Collections already exist, skipping initialization');
-    // }
-
-    console.log("MongoDB connected with transaction support!");
+    if (currentCollections.length < collections.length) {
+      console.log('First time initialization, creating collections...');
+      await initializeCollections();
+    } else {
+      console.log('Collections already exist, skipping initialization');
+    }
+    console.log('MongoDB connected with transaction support!');
     return db;
   } catch (error) {
-    console.error("MongoDB connection error:", error);
+    console.error('MongoDB connection error:', error);
     throw error;
   }
 }
 
-// 初始化集合和索引
-async function initializeCollections() {
+export const initializeCollections = async () => {
   try {
-    const collections = [
-      'posts',
-      'comments',
-      'contents',
-      'mediaResources',
-      'userInteractions',
-      'crawledData',
-    ];
-
-    for (const collectionName of collections) {
+    for (const collection of collections) {
       try {
-        await db.createCollection(collectionName);
-        console.log(`Collection ${collectionName} created`);
-
-        // 创建必要的索引
-        if (collectionName === 'posts') {
-          await db.collection('posts').createIndex(
-            { postId: 1 },
-            { unique: true, background: true }
-          );
-        } else if (collectionName === 'comments') {
-          await Promise.all([
-            db.collection('comments').createIndex(
-              { commentId: 1 },
-              { unique: true, background: true }
-            ),
-            db.collection('comments').createIndex(
-              { postId: 1 },
-              { background: true }
-            ),
-          ]);
+        // 将schema和collection关联, 导入mongodb
+        const collectionExists = await db.listCollections({ name: collection.name }).hasNext();
+        if (!collectionExists) {
+          await db.createCollection(collection.name);
+          console.log(`Collection ${collection.name} created`);
+          model(collection.name, collection.model.schema);
         }
       } catch (error) {
-        console.error(`Error creating collection ${collectionName}:`, error);
+        console.error(`initializeCollection error, collectionName ${collection.name}`, error);
+        throw error;
       }
     }
-
-    console.log('Collections and indexes initialized');
   } catch (error) {
-    console.error('Error in initialization:', error);
+    console.log('initializeCollection error', error);
     throw error;
   }
 }
 
-export function getDb() {
+export const getDb = () => {
   if (!db) {
-    throw new Error('Database not initialized');
+    throw new Error('DB not initialized!');
   }
   return db;
-}
-
-// 列出所有集合
-export async function listCollections() {
-  try {
-    const collections = await db.listCollections().toArray();
-    return collections;
-  } catch (error) {
-    console.error('Error listing collections:', error);
-    throw error;
-  }
 }
 
 export default client;
