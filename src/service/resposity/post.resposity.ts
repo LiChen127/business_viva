@@ -2,7 +2,6 @@
 
 // import PostService from "@/service/db/post.service";
 import PostContentModel from "@/db/collection/PostContent.schema";
-import { client } from '@/config/mongoodb.config';
 import { logError } from "@/utils/logger";
 
 class PostResposity {

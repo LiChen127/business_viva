@@ -10,11 +10,9 @@ import RedisHelper from "@/utils/redisHelper";
 import { logUserAction, logError } from "@/utils/logger";
 import { Request, Response } from "express";
 import UserService from "@/service/db/user.service";
-import mongoose, { startSession } from "mongoose";
 import { sequelize } from "@/config/sequelize.config";
 import CommentService from "@/service/db/comment.service";
 import CommentResposity from "@/service/resposity/comment.resposity";
-import client, { getDb } from '@/config/mongoodb.config';
 import { responseFormatHandler } from "@/utils/responseFormatHandler";
 
 export default class PostController {
