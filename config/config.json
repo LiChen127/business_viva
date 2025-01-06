@@ -3,20 +3,20 @@
     "username": "root",
     "password": "121314",
     "database": "viva",
-    "host": "localhost",
+    "host": "127.0.0.1",
     "dialect": "mysql"
   },
   "test": {
     "username": "root",
-    "password": null,
-    "database": "viva_test",
-    "host": "localhost",
+    "password": "123456",
+    "database": "viva",
+    "host": "127.0.0.1",
     "dialect": "mysql"
   },
   "production": {
     "username": "root",
-    "password": null,
-    "database": "database_production",
+    "password": "123456",
+    "database": "viva",
     "host": "127.0.0.1",
     "dialect": "mysql"
   }

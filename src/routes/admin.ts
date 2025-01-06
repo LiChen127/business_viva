@@ -273,6 +273,7 @@ AdminRouter.post('/updateMoodRecordDetail', authMiddleware, async (req, res) => 
 // 平台获取用户情绪列表
 AdminRouter.get('/getUserMoodList', authMiddleware, async (req, res) => {
   logAPICall('getUserMoodList', req.url, req.body);
+  await MoodController.getUserMoodList(req, res);
 })
 
 /**

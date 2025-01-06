@@ -223,10 +223,12 @@ class MoodController {
           };
         })
         if (resultList.length > 0) {
-          await RedisHelper.set(redisKey, resultList, 60 * 10); // 十分钟缓存
+          await RedisHelper.set(redisKey, { list: resultList }, 60 * 10); // 十分钟缓存
         }
         return responseFormatHandler(res, 200, '请求moodListAll成功', {
-          data: userList,
+          data: {
+            list: resultList
+          },
           dataFrom: 'db'
         });
       }

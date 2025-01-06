@@ -7,6 +7,7 @@ import UserProfile from '@/db/models/UserProfile.model';
 import Comments from '@/db/models/Comments.model';
 import Posts from '@/db/models/Posts.model';
 import MoodModel from '@/db/models/Mood.model';
+import SenstiveWordsModel from '@/db/models/SenstiveWords.model';
 // 配置数据库连接信息
 const sequelizeConfig = {
   host: process.env.NODE_ENV === 'production' ? process.env.MYSQL_HOST_ALIYUN : process.env.MYSQL_LOCAL_HOST,
@@ -45,11 +46,9 @@ const init = async () => {
     // 验证数据库连接
     await sequelize.authenticate();
     console.log('Sequelize connection has been established successfully.');
-
     // 修改为使用 addModels 方式
     sequelize.addModels([User, ActionsLogs, RecommendationRules, ScheduledTasks, UserProfile, Posts
-      , Comments, MoodModel]);
-
+      , Comments, MoodModel, SenstiveWordsModel]);
     // 如果需要同步表结构
     await sequelize.sync({ alter: false });
     console.log('Database synchronized successfully.');
