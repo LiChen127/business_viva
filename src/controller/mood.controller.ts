@@ -10,6 +10,7 @@ import MoodService from "@/service/db/mood.service";
 import { Mood } from "@/service/db/mood.service";
 import { sequelize } from "@/config/sequelize.config";
 import { Transaction } from "sequelize";
+import { UserProfileService } from "@/service/db/userProfile.service";
 
 class MoodController {
   /**
@@ -145,9 +146,115 @@ class MoodController {
           dataFrom: 'redis'
         })
       }
-      await RedisHelper.set(redisKey, moodRecord);
+      await RedisHelper.set(redisKey, moodRecord, 60 * 5);
       return responseFormatHandler(res, 200, '获取记录成功', {
         data: moodRecord,
+        dataFrom: 'db'
+      });
+    } catch (error) {
+      logError(error as Error, { userId });
+      return responseFormatHandler(res, 500, '服务端错误');
+    }
+  }
+  /**
+   * 获取用户情绪列表支持分页搜索筛选
+   * 筛选支持时间筛选
+   * createAt: 2025-01-05 11:34:38
+   */
+  static async getUserMoodList(req: Request, res: Response) {
+    const { userId, page, pageSize, dateTime, search } = req.query as {
+      userId: string;
+      page?: string;
+      pageSize?: string;
+      dateTime?: string;
+      search?: string;
+    }
+    if (!userId) {
+      return responseFormatHandler(res, 400, '缺少必要参数userId');
+    }
+    try {
+      const redisKey = RedisHelper.defineKey(userId, 'getUserMoodListAll');
+      if (!page && !pageSize && !search) {
+        const redisList = await RedisHelper.get(redisKey)
+        if (redisList) {
+          return responseFormatHandler(res, 200, '请求moodListAll成功', {
+            data: redisList,
+            dataFrom: 'redis'
+          });
+        }
+      }
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return responseFormatHandler(res, 400, '用户不存在');
+      }
+      if (user.role !== 'admin' && user.role !== 'superAdmin') {
+        return responseFormatHandler(res, 400, '没有权限');
+      }
+      if (dateTime) {
+        // 写一个正则过滤一下
+        // 格式2024-01-05
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (!datePattern.test(dateTime)) {
+          return responseFormatHandler(res, 400, '日期格式不正确, 应为YYYY-MM-DD格式');
+        }
+      }
+      const userList = await UserService.getUserList(Number(page), Number(pageSize), search);
+      let userIdList: string[];
+      let userProfileList: any[];
+      let moodList: any[];
+      let resultList: any[];
+      if (Array.isArray(userList)) {
+        userIdList = userList.map(u => u.id);
+        [userProfileList, moodList] = await Promise.all([
+          UserProfileService.getUserProfileListByUserIds(userIdList),
+          MoodService.getMoodRecordListByUserId(userIdList, dateTime)
+        ])
+        resultList = userList.map((user, index) => {
+          return {
+            userId: user.id,
+            nickname: user.nickname,
+            username: user.username,
+            gender: userProfileList[index].gender,
+            location: userProfileList[index].location,
+            moodGrade: moodList[index].moodGrade,
+            moodNoteTitle: moodList[index].noteTitle,
+            createTime: moodList[index].createdAt,
+            lastUpdateTime: moodList[index].updatedAt
+          };
+        })
+        if (resultList.length > 0) {
+          await RedisHelper.set(redisKey, resultList, 60 * 10); // 十分钟缓存
+        }
+        return responseFormatHandler(res, 200, '请求moodListAll成功', {
+          data: userList,
+          dataFrom: 'db'
+        });
+      }
+      const processedUserList = userList.list;
+      const count = userList.total;
+      userIdList = processedUserList.map(u => u.id);
+      [userProfileList, moodList] = await Promise.all([
+        UserProfileService.getUserProfileListByUserIds(userIdList),
+        MoodService.getMoodRecordListByUserId(userIdList)
+      ])
+      resultList = processedUserList.map((user, index) => {
+        return {
+          userId: user.id,
+          nickname: user.nickname,
+          username: user.username,
+          gender: userProfileList[index].gender,
+          location: userProfileList[index].location,
+          moodGrade: moodList[index].moodGrade,
+          moodNoteTitle: moodList[index].noteTitle,
+          createTime: moodList[index].createdAt,
+          lastUpdateTime: moodList[index].updatedAt
+        };
+      });
+      return responseFormatHandler(res, 200, '请求成功', {
+        data: {
+          list: resultList,
+          count: count,
+        },
         dataFrom: 'db'
       });
     } catch (error) {

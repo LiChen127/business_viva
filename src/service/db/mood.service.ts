@@ -1,4 +1,5 @@
 import MoodModel from "@/db/models/Mood.model";
+import { Op } from "sequelize";
 
 export type Mood = {
   moodId?: bigint;
@@ -55,6 +56,24 @@ class MoodService {
       where: {
         id: moodId
       }
+    });
+  }
+
+  static async getMoodRecordListByUserId(userIds: string[], dateTime?: string) {
+    // 构建查询条件
+    const whereCondition: any = { userId: userIds };
+    if (dateTime) {
+      // 将日期转换为开始和结束时间
+      const startOfDay = new Date(`${dateTime}T00:00:00`);
+      const endOfDay = new Date(`${dateTime}T23:59:59`);
+      // 添加时间范围条件
+      whereCondition.createAt = {
+        [Op.between]: [startOfDay, endOfDay],
+      };
+    }
+    // 执行查询
+    return await MoodModel.findAll({
+      where: whereCondition,
     });
   }
 }

@@ -122,7 +122,7 @@ export default class PostController {
         ...postInMysql.toJSON(),
         content: content[0].content,
       }
-      RedisHelper.set(redisKey, data);
+      RedisHelper.set(redisKey, data, 60 * 5);
       return responseFormatHandler(res, 200, '获取帖子内容成功', {
         data,
         dataFrom: 'db',
@@ -170,7 +170,7 @@ export default class PostController {
             ...post.toJSON(),
             content: postsContent[index] ? postsContent[index].content : '',
           }));
-          RedisHelper.set(redisKey, data);
+          RedisHelper.set(redisKey, data, 60 * 5);
           return responseFormatHandler(res, 200, '获取全部帖子列表成功', {
             data,
             dataFrom: 'db',

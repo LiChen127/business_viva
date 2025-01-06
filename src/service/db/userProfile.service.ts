@@ -24,4 +24,12 @@ export class UserProfileService {
     return await UserProfileModel.findAll();
   }
 
+  static async getUserProfileListByUserIds(userIds: string[]) {
+    return await UserProfileModel.findAll({
+      where: {
+        userId: userIds
+      }
+    });
+  }
+
 }

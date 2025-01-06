@@ -270,6 +270,10 @@ AdminRouter.post('/updateMoodRecordDetail', authMiddleware, async (req, res) => 
   logAPICall('updateMoodRecordDetail', req.url, req.body);
   await MoodController.updateRecordWithNote(req, res);
 })
+// 平台获取用户情绪列表
+AdminRouter.get('/getUserMoodList', authMiddleware, async (req, res) => {
+  logAPICall('getUserMoodList', req.url, req.body);
+})
 
 /**
  * 等级相关

@@ -5,7 +5,7 @@ class RedisHelper {
     return `${service}:${key}`;
   }
 
-  static async set(key: string, value: any, ttl?: number) {
+  static async set(key: string, value: any, ttl: number) {
     const stringValue = typeof value === 'object' ? JSON.stringify(value) : value;
 
     if (ttl) {
