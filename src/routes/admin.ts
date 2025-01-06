@@ -9,6 +9,7 @@ import UserProfileController from '@/controller/userProfile.controller';
 import { logAPICall } from '@/utils/logger';
 import PostController from '@/controller/post.controller';
 import MoodController from '@/controller/mood.controller';
+import SensitiveController from '@/controller/sensitive.controller';
 
 
 const AdminRouter = Router();
@@ -67,7 +68,11 @@ AdminRouter.get("/getUserProfileList", authMiddleware, async (req, res) => {
   logAPICall('getUserProfileList', req.url, req.body);
   await UserProfileController.getAllUserProfile(req, res);
 })
-
+// 封禁用户
+AdminRouter.post('/banUser', authMiddleware, async (req, res) => {
+  logAPICall('banUser', req.url, req.body);
+  // await UserProfileController.banUser(req, res);
+})
 
 
 /**
@@ -170,7 +175,6 @@ AdminRouter.get('/getHotPostList', authMiddleware, async (req, res) => {
   // await PostController.getHotPostList(req, res);
 })
 
-
 /**
  * 树洞帖子审核相关
  */
@@ -181,7 +185,7 @@ AdminRouter.get('/getHotPostList', authMiddleware, async (req, res) => {
 // @todo: 加一个敏感词拦截器
 AdminRouter.get('/getPostedAuthList', authMiddleware, async (req, res) => {
   logAPICall('getPostedAuthList', req.url, req.body);
-  // await PostController.getPostedAuthList(req, res);
+  await PostController.getPostsList(req, res);
 })
 // 设置状态
 /**
@@ -229,18 +233,15 @@ AdminRouter.get('/getMediaList', authMiddleware, async (req, res) => {
 // 获取用户情绪列表
 AdminRouter.get('/getUserMoodList', authMiddleware, async (req, res) => {
   logAPICall('getUserMoodList', req.url, req.body);
+  await MoodController.getUserMoodList(req, res);
 })
 // 情绪追踪
-AdminRouter.get('/getMoodsTrace', authMiddleware, async (req, res) => {
-  logAPICall('getMoodsTrace', req.url, req.body);
-})
+// AdminRouter.get('/getMoodsTrace', authMiddleware, async (req, res) => {
+//   logAPICall('getMoodsTrace', req.url, req.body);
+// })
 // 情绪日报/周报/月报/年报
 AdminRouter.post('/postMoodRecord', authMiddleware, async (req, res) => {
   logAPICall('postMoodRecord', req.url, req.body);
-})
-// 获取报告列表
-AdminRouter.get('/getMoodRecordList', authMiddleware, async (req, res) => {
-  logAPICall('getMoodRecordList', req.url, req.body);
 })
 // 获取报告详情
 AdminRouter.get('/getMoodRecordDetail', authMiddleware, async (req, res) => {
@@ -256,14 +257,6 @@ AdminRouter.delete('/deleteMoodRecord', authMiddleware, async (req, res) => {
 AdminRouter.post('/postDailyMood', authMiddleware, async (req, res) => {
   logAPICall('postDailyMood', req.url, req.body);
   await MoodController.recordDayMood(req, res);
-})
-// 获取每日收录情绪列表
-AdminRouter.get('/getDailyMoodList', authMiddleware, async (req, res) => {
-  logAPICall('getDailyMoodList', req.url, req.body);
-})
-// 平台实时监控每日用户情绪
-AdminRouter.get('/getDailyUserMood', authMiddleware, async (req, res) => {
-  logAPICall('getDailyUserMood', req.url, req.body);
 })
 // 更新情绪日记
 AdminRouter.post('/updateMoodRecordDetail', authMiddleware, async (req, res) => {
@@ -358,6 +351,24 @@ AdminRouter.post('/addScoreByType', authMiddleware, async (req, res) => {
 // 根据类型减积分
 AdminRouter.post('/subScoreByType', authMiddleware, async (req, res) => {
   logAPICall('subScoreByType', req.url, req.body);
+})
+
+/**
+ * 敏感词管理
+ */
+// 加敏感词
+AdminRouter.post('/putWordInSensitive', authMiddleware, async (req, res) => {
+  logAPICall('putWordInSensitive', req.url, req.body);
+  await SensitiveController.putWordIn(req, res);
+})
+// 获取敏感词列表
+AdminRouter.get('/getSensitiveWordList', authMiddleware, async (req, res) => {
+  logAPICall('getSensitiveWordList', req.url, req.body);
+  await SensitiveController.getWordList(req, res);
+})
+AdminRouter.delete('/deleteWord', authMiddleware, async (req, res) => {
+  logAPICall('deleteWord', req.url, req.body);
+  await SensitiveController.deleteWord(req, res);
 })
 
 

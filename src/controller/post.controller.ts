@@ -534,5 +534,4 @@ export default class PostController {
       return responseFormatHandler(res, 500, '删除评论失败');
     }
   }
-
 }

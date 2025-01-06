@@ -3,21 +3,18 @@
 import { sequelize } from '@/config/sequelize.config';
 import { UserProfileService } from '@/service/db/userProfile.service';
 import UserService from '@/service/db/user.service';
-import { logUserAction } from '@/utils/logger';
+import { logError, logUserAction } from '@/utils/logger';
 import RedisHelper from '@/utils/redisHelper';
-import { Request, Response } from 'express';
+import { Request, response, Response } from 'express';
 import { QueryTypes } from 'sequelize';
+import { responseFormatHandler } from '@/utils/responseFormatHandler';
 
 export default class UserProfileController {
   static async setUserProfile(req: Request, res: Response) {
     const { userId, gender, age, location, introduction, moodStatus } = req.body;
     if (!userId || !gender || !age || !location || !introduction || !moodStatus) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
-
     try {
       const userProfile = {
         gender,
@@ -27,18 +24,11 @@ export default class UserProfileController {
         moodStatus,
       }
       logUserAction('setUserProfile', userId, userProfile);
-      // const result = await UserProfileService.setUserProfile(userId, userProfile);
       await UserProfileService.setUserProfile(userId, userProfile);
-      return res.status(200).json({
-        code: 200,
-        message: '设置用户概况成功',
-      })
+      return responseFormatHandler(res, 200, '设置用户信息成功');
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        code: 500,
-        message: '设置用户概况失败',
-      })
+      return responseFormatHandler(res, 500, '服务端错误');
     }
   }
 
@@ -94,53 +84,37 @@ export default class UserProfileController {
   static async getUserProfile(req: Request, res: Response) {
     const userId = req.params.userId;
     if (!userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       const redisKey = RedisHelper.defineKey(userId, 'userProfile');
       const userProfile = await RedisHelper.get(redisKey);
       if (userProfile) {
-        return res.status(200).json({
-          code: 200,
+        return responseFormatHandler(res, 200, '获取成功', {
           data: userProfile,
-          message: '获取用户概况成功',
           dataFrom: 'redis',
-        })
+        });
       }
       const userProfileInDb = await UserProfileService.getUserProfileByUserId(userId);
       if (!userProfileInDb) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户概况不存在',
-        })
+        return responseFormatHandler(res, 400, '用户信息不存在');
       }
       // 存一下redis
       await RedisHelper.set(redisKey, userProfileInDb, 60 * 10 * 24); // 1天
-      return res.status(200).json({
-        code: 200,
+      return responseFormatHandler(res, 200, '获取成功', {
         data: userProfileInDb,
-        message: '获取用户概况成功',
-        dataFrom: 'db',
+        dataFrom: 'db'
       })
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        code: 500,
-        message: '获取用户概况失败',
-      })
+      return responseFormatHandler(res, 500, '服务端错误');
     }
   }
 
   static async updateUserProfile(req: Request, res: Response) {
     const { userId, gender, age, location, introduction, moodStatus } = req.body;
     if (!userId || !gender || !age || !location || !introduction || !moodStatus) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       const newuseProfile = {
@@ -152,17 +126,10 @@ export default class UserProfileController {
       }
       logUserAction('updateUserProfile', userId, newuseProfile);
       const result = await UserProfileService.updateUserProfile(userId, newuseProfile);
-      return res.status(200).json({
-        code: 200,
-        data: result,
-        message: '更新用户概况成功',
-      })
+      return responseFormatHandler(res, 200, '更新成功', result);
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        code: 500,
-        message: '更新用户概况失败',
-      })
+      return responseFormatHandler(res, 500, '服务端错误');
     }
   }
 
@@ -174,25 +141,16 @@ export default class UserProfileController {
       pageSize?: string | number;
     }
     if (!userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少userId',
-      })
+      return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
       // 查找一下是不是管理员
       const user = await UserService.getUserById(userId);
       if (!user) {
-        return res.status(400).json({
-          code: 400,
-          message: '管理员不存在'
-        })
+        return responseFormatHandler(res, 400, '管理员不存在');
       }
       if (user.role !== 'admin' && user.role !== 'superAdmin') {
-        return res.status(400).json({
-          code: 400,
-          message: '用户没有权限'
-        })
+        return responseFormatHandler(res, 400, '该用户没有权限');
       }
       const offset = (Number(page) - 1) * Number(pageSize);
       const limit = Number(pageSize);
@@ -235,6 +193,7 @@ export default class UserProfileController {
           up.location,
           up.introduction,
           up.moodStatus
+          up.isBanned
         FROM
           users u
         INNER JOIN
@@ -250,7 +209,6 @@ export default class UserProfileController {
         OFFSET
           :offset;
       `;
-
       const listResult = await sequelize.query(listSql, {
         replacements: {
           search: search || null,
@@ -260,21 +218,13 @@ export default class UserProfileController {
         },
         type: QueryTypes.SELECT,
       });
-
-      return res.status(200).json({
-        code: 200,
-        data: {
-          count: totalCount,
-          list: listResult,
-        },
-        message: '获取用户概况列表成功',
+      return responseFormatHandler(res, 200, '请求成功', {
+        count: totalCount,
+        list: listResult
       });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        code: 500,
-        message: '获取用户概况列表失败'
-      })
+      return responseFormatHandler(res, 500, '服务端错误');
     }
   }
   // @todo: 之后数据量多了之后优化  迁移到getUserProfileList
@@ -284,35 +234,61 @@ export default class UserProfileController {
     }
     const redisKey = RedisHelper.defineKey(userId, 'allUserProfile');
     if (!userId) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少userId',
-      })
+      return responseFormatHandler(res, 400, '缺少userId');
     }
-
     try {
-      if (await RedisHelper.get(redisKey)) {
-        return res.status(200).json({
-          code: 200,
-          data: await RedisHelper.get(redisKey),
-          message: '获取用户概况列表成功',
-          dataFrom: 'redis',
+      const redisValue = await RedisHelper.get(redisKey);
+      if (redisValue) {
+        return responseFormatHandler(res, 200, '请求成功', {
+          data: redisValue,
+          dataFrom: 'redis'
         })
       }
       const userProfiles = await UserProfileService.getAllUserProfile();
       await RedisHelper.set(redisKey, userProfiles, 60 * 10 * 24); // 1天
-      return res.status(200).json({
-        code: 200,
+      return responseFormatHandler(res, 200, '请求成功', {
         data: userProfiles,
-        message: '获取用户概况列表成功',
-        dataFrom: 'db',
-      })
+        dataFrom: 'db'
+      });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        code: 500,
-        message: '获取用户概况列表失败',
-      })
+      return responseFormatHandler(res, 500, '服务端错误');
+    }
+  }
+
+  static async banUser(req: Request, res: Response) {
+    const { userId, targetUserId } = req.body as {
+      userId: string;
+      targetUserId: string;
+    }
+    if (!userId || !targetUserId) {
+      return responseFormatHandler(res, 400, '缺少必要参数');
+    }
+    try {
+      const [user, targetUser] = await Promise.all([
+        UserService.getUserById(userId),
+        UserService.getUserById(targetUserId),
+      ])
+      if (!user || !targetUser) {
+        return responseFormatHandler(res, 400, '用户不存在');
+      }
+      if (user.role !== 'superAdmin' && user.role !== 'admin') {
+        return responseFormatHandler(res, 400, '该用户没有权限');
+      }
+      const targetUserProfile = await UserProfileService.getUserProfileByUserId(user.id);
+      if (targetUserProfile) {
+        if (targetUserProfile?.isBanned) {
+          return responseFormatHandler(res, 400, '用户已经被封禁');
+        }
+        targetUserProfile.isBanned = true;
+        logUserAction('banUser', targetUserId);
+        const result = await UserProfileService.updateUserProfile(targetUserId, targetUserProfile);
+        return responseFormatHandler(res, 201, '禁用该用户成功', result);
+      }
+      return responseFormatHandler(res, 400, '该用户没有profile信息');
+    } catch (error) {
+      logError(error as Error, { userId: userId, targetUserId: targetUserId });
+      return responseFormatHandler(res, 500, '服务端错误');
     }
   }
 }
