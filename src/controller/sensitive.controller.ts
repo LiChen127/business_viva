@@ -23,7 +23,6 @@ class SensitiveController {
       if (user.role !== 'superAdmin' && user.role !== 'admin') {
         return responseFormatHandler(res, 400, '该用户没有权限');
       }
-      // const publicRedisKey = RedisHelper.defineKey(userId, 'getSensitiveWord');
       // 先清除redis缓存
       await Promise.all([
         RedisHelper.delete(this.publicRedisKey),

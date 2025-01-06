@@ -3,11 +3,12 @@
 import { sequelize } from '@/config/sequelize.config';
 import { UserProfileService } from '@/service/db/userProfile.service';
 import UserService from '@/service/db/user.service';
-import { logError, logUserAction } from '@/utils/logger';
+import { logAPICall, logError, logUserAction } from '@/utils/logger';
 import RedisHelper from '@/utils/redisHelper';
 import { Request, response, Response } from 'express';
 import { QueryTypes } from 'sequelize';
 import { responseFormatHandler } from '@/utils/responseFormatHandler';
+import { UserExpData, ActionToIncrementUserExp, ActionToIncrementUserExpTypeSet } from '@/types/userStatusType';
 
 export default class UserProfileController {
   static async setUserProfile(req: Request, res: Response) {
@@ -288,6 +289,95 @@ export default class UserProfileController {
       return responseFormatHandler(res, 400, '该用户没有profile信息');
     } catch (error) {
       logError(error as Error, { userId: userId, targetUserId: targetUserId });
+      return responseFormatHandler(res, 500, '服务端错误');
+    }
+  }
+
+  static async incrementUserLevel(req: Request, res: Response) {
+    const { userId } = req.body as {
+      userId: string;
+    }
+    if (!userId) {
+      return responseFormatHandler(res, 400, '缺少参数');
+    }
+    try {
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return responseFormatHandler(res, 400, '该用户不存在');
+      }
+      const userProfile = await UserProfileService.getUserProfileByUserId(userId);
+      if (!userProfile) {
+        return responseFormatHandler(res, 400, '该用户未填写信息');
+      }
+      await UserProfileService.incrementUserLevel(userId);
+      return responseFormatHandler(res, 200, '升级成功');
+    } catch (error) {
+      logError(error as Error, { userId: userId });
+      return responseFormatHandler(res, 500, '服务端错误');
+    }
+  }
+
+  static async incrementUserExp(req: Request, res: Response) {
+    const { userId, actionType } = req.body as {
+      userId: string;
+      actionType: string;
+    }
+    if (!userId) {
+      return responseFormatHandler(res, 400, '缺少参数');
+    }
+    let trasaction
+    try {
+      trasaction = await sequelize.transaction();
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return responseFormatHandler(res, 400, '该用户不存在');
+      }
+      const userProfile = await UserProfileService.getUserProfileByUserId(userId);
+      if (!userProfile) {
+        return responseFormatHandler(res, 400, '该用户未填写信息');
+      }
+      // 目标经验值
+      const targetExp = ActionToIncrementUserExpTypeSet.get(actionType);
+      if (!targetExp) {
+        return responseFormatHandler(res, 400, '当前actionType无效');
+      }
+      // 当前用户的等级
+      const currentLevel = userProfile.level;
+      // 当前用户的经验值
+      const currentExp = userProfile.experiencePoints;
+      // if (currentExp)
+      // 当前用户等级的经验值上限
+      const targetExpPoint = UserExpData.find(u => u.score === currentLevel)!.experiencePoints;
+      if (currentExp === targetExpPoint) {
+        return responseFormatHandler(res, 400, '用户经验值已达上限');
+      }
+      // 算出总的经验值
+      const computedExp = currentExp + targetExp;
+      const result = await UserProfileService.updateUserExperiencePoints(userId, computedExp);
+      if (result) {
+        // 如果加经验成功了
+        // 继续计算是否需要加等级
+        const freshUserProfile = await UserProfileService.getUserProfileByUserId(userId)!;
+        const newExpAboutUser = freshUserProfile?.experiencePoints;
+        if (newExpAboutUser && newExpAboutUser !== currentExp) {
+          // 不相等说明成功了
+          // 判断是否需要加等级
+          const currentLevel = freshUserProfile.level;
+          const targetLevel = UserExpData.find(u => u.score === currentLevel)!.score;
+
+          if (targetLevel > currentLevel) {
+            // 这就说明要升
+            await UserProfileService.incrementUserLevel(userId);
+          }
+        } else {
+          // 回滚
+          await trasaction.rollback();
+          return responseFormatHandler(res, 400, '升级失败');
+        }
+      }
+    } catch (e) {
+      logError(e as Error, { userId: userId });
+      await trasaction?.rollback();
       return responseFormatHandler(res, 500, '服务端错误');
     }
   }

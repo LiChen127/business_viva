@@ -1,6 +1,6 @@
 'use strict';
 import UserProfileModel, { UserProfile as UserProfileType } from "@/db/models/UserProfile.model";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 
 export class UserProfileService {
   static async setUserProfile(userId: string, userProfile: Partial<UserProfileType>) {
@@ -32,6 +32,17 @@ export class UserProfileService {
     });
   }
 
-  // static async updateUserProfile 
+  static async incrementUserLevel(userId: string) {
+    return await UserProfileModel.increment('level', { where: { userId } });
+  }
+
+  static async updateUserExperiencePoints(userId: string, newExp: number) {
+    const updateData = { experiencePoints: newExp };
+    return await UserProfileModel.update(updateData, {
+      where: {
+        userId: userId
+      }
+    });
+  }
 
 }

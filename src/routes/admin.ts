@@ -371,6 +371,13 @@ AdminRouter.delete('/deleteWord', authMiddleware, async (req, res) => {
   await SensitiveController.deleteWord(req, res);
 })
 
+/**
+ * 用户等级管理
+ */
+AdminRouter.post('/incrementUserLevel', authMiddleware, async (req, res) => {
+  logAPICall('incrementUserLevel', req.url, req.body);
+  await UserProfileController.incrementUserLevel(req, res);
+})
 
 
 export default AdminRouter;

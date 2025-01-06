@@ -35,13 +35,13 @@ export class UserProfile extends Model {
   @Column({ type: DataType.STRING })
   moodStatus!: string;
 
-  @Column({ type: DataType.TINYINT })
+  @Column({ type: DataType.TINYINT, defaultValue: 1, })
   level!: number;
 
-  @Column({ type: DataType.INTEGER })
+  @Column({ type: DataType.INTEGER, defaultValue: 0, })
   experiencePoints!: number;
 
-  @Column({ type: DataType.BOOLEAN })
+  @Column({ type: DataType.BOOLEAN, defaultValue: false })
   isBanned: boolean;
 
 }
