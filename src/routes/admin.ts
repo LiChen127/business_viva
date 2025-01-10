@@ -71,9 +71,8 @@ AdminRouter.get("/getUserProfileList", authMiddleware, async (req, res) => {
 // 封禁用户
 AdminRouter.post('/banUser', authMiddleware, async (req, res) => {
   logAPICall('banUser', req.url, req.body);
-  // await UserProfileController.banUser(req, res);
+  await UserProfileController.banUser(req, res);
 })
-
 
 /**
  * 树洞社区相关
@@ -366,6 +365,7 @@ AdminRouter.get('/getSensitiveWordList', authMiddleware, async (req, res) => {
   logAPICall('getSensitiveWordList', req.url, req.body);
   await SensitiveController.getWordList(req, res);
 })
+// 删除敏感词
 AdminRouter.delete('/deleteWord', authMiddleware, async (req, res) => {
   logAPICall('deleteWord', req.url, req.body);
   await SensitiveController.deleteWord(req, res);
@@ -374,10 +374,20 @@ AdminRouter.delete('/deleteWord', authMiddleware, async (req, res) => {
 /**
  * 用户等级管理
  */
+// 增加用户等级
 AdminRouter.post('/incrementUserLevel', authMiddleware, async (req, res) => {
   logAPICall('incrementUserLevel', req.url, req.body);
   await UserProfileController.incrementUserLevel(req, res);
 })
-
+// 获取用户等级经验状态
+AdminRouter.get('/getUserLevelAndExp', authMiddleware, async (req, res) => {
+  logAPICall('getUserLevelAndExp', req.url, req.body);
+  await UserProfileController.getUserLevelAndExp(req, res);
+})
+// 增加用户经验
+AdminRouter.post('/incrementUserExp', authMiddleware, async (req, res) => {
+  logAPICall('incrementUserExp', req.url, req.body);
+  await UserProfileController.incrementUserExp(req, res);
+})
 
 export default AdminRouter;

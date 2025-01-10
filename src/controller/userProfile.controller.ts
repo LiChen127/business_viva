@@ -11,6 +11,7 @@ import { responseFormatHandler } from '@/utils/responseFormatHandler';
 import { UserExpData, ActionToIncrementUserExp, ActionToIncrementUserExpTypeSet } from '@/types/userStatusType';
 
 export default class UserProfileController {
+  // @todo 清理缓存的逻辑补上，抽离RedisKey的逻辑补上，日志系统重构
   static async setUserProfile(req: Request, res: Response) {
     const { userId, gender, age, location, introduction, moodStatus } = req.body;
     if (!userId || !gender || !age || !location || !introduction || !moodStatus) {
@@ -118,6 +119,9 @@ export default class UserProfileController {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
+      const redisKey = RedisHelper.defineKey(userId, 'userProfile');
+      // 清一下缓存
+      await RedisHelper.delete(redisKey);
       const newuseProfile = {
         gender,
         age,
@@ -135,11 +139,12 @@ export default class UserProfileController {
   }
 
   static async getUserProfileList(req: Request, res: Response) {
-    const { userId, search, page, pageSize } = req.query as {
+    const { userId, search, page, pageSize, isBanned } = req.query as {
       userId: string;
       search?: string;
       page?: string | number;
       pageSize?: string | number;
+      isBanned?: string | number;
     }
     if (!userId) {
       return responseFormatHandler(res, 400, '缺少必要参数');
@@ -153,9 +158,13 @@ export default class UserProfileController {
       if (user.role !== 'admin' && user.role !== 'superAdmin') {
         return responseFormatHandler(res, 400, '该用户没有权限');
       }
+      // 是否封禁 remind: 这个功能需要管理员权限
+      // const adminUserProfile = await UserProfileService.getUserProfileByUserId(userId);
+      // if (isBanned === 'true' && adminUserProfile?.isBanned) {
+      //   return responseFormatHandler(res, 400, '该用户不允许的操作');
+      // }
       const offset = (Number(page) - 1) * Number(pageSize);
       const limit = Number(pageSize);
-
       // 查询总数
       const countSql = `
         SELECT
@@ -167,9 +176,9 @@ export default class UserProfileController {
         ON
           u.id = up.userId
         WHERE
-          (:search IS NULL OR u.username LIKE :searchPattern OR u.nickname LIKE :searchPattern);
+          (:search IS NULL OR u.username LIKE :searchPattern OR u.nickname LIKE :searchPattern)
+          ${isBanned ? 'AND up.isBanned = 0' : ''}
       `;
-
       const countResult = await sequelize.query(countSql, {
         replacements: {
           search: search || null,
@@ -202,7 +211,8 @@ export default class UserProfileController {
         ON
           u.id = up.userId
         WHERE
-          (:search IS NULL OR u.username LIKE :searchPattern OR u.nickname LIKE :searchPattern)
+          (:search IS NULL OR u.username LIKE :searchPattern OR u.nickname LIKE :searchPattern )
+          ${isBanned ? 'AND up.isBanned = 0' : ''}
         ORDER BY
           u.createdAt DESC
         LIMIT
@@ -318,6 +328,7 @@ export default class UserProfileController {
   }
 
   static async incrementUserExp(req: Request, res: Response) {
+    // 接收userId和活动类型
     const { userId, actionType } = req.body as {
       userId: string;
       actionType: string;
@@ -325,8 +336,11 @@ export default class UserProfileController {
     if (!userId) {
       return responseFormatHandler(res, 400, '缺少参数');
     }
-    let trasaction
+    // mysql事务
+    let trasaction;
     try {
+      // 开启事务
+      logUserAction('incrementUserExp_start_mysql_transaction', userId);
       trasaction = await sequelize.transaction();
       const user = await UserService.getUserById(userId);
       if (!user) {
@@ -345,11 +359,13 @@ export default class UserProfileController {
       const currentLevel = userProfile.level;
       // 当前用户的经验值
       const currentExp = userProfile.experiencePoints;
-      // if (currentExp)
       // 当前用户等级的经验值上限
       const targetExpPoint = UserExpData.find(u => u.score === currentLevel)!.experiencePoints;
       if (currentExp === targetExpPoint) {
-        return responseFormatHandler(res, 400, '用户经验值已达上限');
+        return responseFormatHandler(res, 400, '用户经验值已达上限', {
+          currentExp: currentExp,
+          targetExpPoint: targetExpPoint,
+        });
       }
       // 算出总的经验值
       const computedExp = currentExp + targetExp;
@@ -364,20 +380,74 @@ export default class UserProfileController {
           // 判断是否需要加等级
           const currentLevel = freshUserProfile.level;
           const targetLevel = UserExpData.find(u => u.score === currentLevel)!.score;
-
           if (targetLevel > currentLevel) {
-            // 这就说明要升
+            // 这就说明要升级了
             await UserProfileService.incrementUserLevel(userId);
+            return responseFormatHandler(res, 200, '经验值增加成功，并升级成功', {
+              currentLevel: currentLevel,
+              targetLevel: targetLevel,
+            });
           }
+          return responseFormatHandler(res, 200, '经验值增加成功', {
+            currentLevel: currentLevel,
+            targetLevel: targetLevel,
+          });
         } else {
           // 回滚
           await trasaction.rollback();
-          return responseFormatHandler(res, 400, '升级失败');
+          return responseFormatHandler(res, 400, '经验值增加失败', {
+            currentExp: currentExp,
+            targetExpPoint: targetExpPoint,
+          });
         }
       }
     } catch (e) {
       logError(e as Error, { userId: userId });
       await trasaction?.rollback();
+      return responseFormatHandler(res, 500, '服务端错误');
+    }
+  }
+
+  static async getUserLevelAndExp(req: Request, res: Response) {
+    const { userId } = req.query as {
+      userId: string;
+    }
+    if (!userId) {
+      return responseFormatHandler(res, 400, '缺少参数');
+    }
+    try {
+      const redisKey = RedisHelper.defineKey(userId, 'userLevelAndExp');
+      const redisValue = await RedisHelper.get(redisKey);
+      if (redisValue) {
+        return responseFormatHandler(res, 200, '请求成功', {
+          data: redisValue,
+          dataFrom: 'redis'
+        });
+      }
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return responseFormatHandler(res, 400, '该用户不存在');
+      }
+      const userProfile = await UserProfileService.getUserProfileByUserId(userId);
+      if (!userProfile) {
+        return responseFormatHandler(res, 400, '该用户未填写信息');
+      }
+      const currentLevel = userProfile.level;
+      const currentExp = userProfile.experiencePoints;
+      const targetExpPoint = UserExpData.find(u => u.score === currentLevel)!;
+      const result = {
+        currentLevel: currentLevel,
+        currentExp: currentExp,
+        currentExpPoint: targetExpPoint.experiencePoints,
+        nextLevel: targetExpPoint.score + 1,
+      }
+      await RedisHelper.set(redisKey, result, 60 * 10 * 24); // 1天
+      return responseFormatHandler(res, 200, '请求成功', {
+        data: result,
+        dataFrom: 'db'
+      });
+    } catch (error) {
+      logError(error as Error, { userId: userId });
       return responseFormatHandler(res, 500, '服务端错误');
     }
   }
