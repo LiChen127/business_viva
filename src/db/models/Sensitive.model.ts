@@ -1,10 +1,10 @@
 import { Table, Model, Column, DataType, PrimaryKey, ForeignKey } from "sequelize-typescript";
 
 @Table({
-  tableName: 'senstivewords',
+  tableName: 'sensitivewords',
   timestamps: true
 })
-export class SenstiveWordsModel extends Model {
+export class sensitivewordsModel extends Model {
   @Column({
     type: DataType.BIGINT,
     allowNull: false,
@@ -20,4 +20,4 @@ export class SenstiveWordsModel extends Model {
   word!: string;
 }
 
-export default SenstiveWordsModel;
+export default sensitivewordsModel;

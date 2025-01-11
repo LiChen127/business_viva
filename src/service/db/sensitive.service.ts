@@ -1,11 +1,10 @@
 'use strict';
-// import SenstiveWordsModel from "@/db/models/SenstiveWords.model";
-import SenstiveWordsModel from "@/db/models/SenstiveWords.model";
+import sensitivewordsModel from "@/db/models/Sensitive.model";
 import { Op } from "sequelize";
 
 class SensitiveSerivce {
   static async createWord(word: string) {
-    return await SenstiveWordsModel.create({ word });
+    return await sensitivewordsModel.create({ word });
   }
 
   static async getWordList(page?: number, pageSize?: number, search?: string) {
@@ -13,13 +12,13 @@ class SensitiveSerivce {
     const offset = page ? (Number(page) - 1) * Number(pageSize) : 0;
     const limit = pageSize ? Number(pageSize) : undefined;
     if (!page && !pageSize && !search) {
-      result = await SenstiveWordsModel.findAll();
+      result = await sensitivewordsModel.findAll();
     }
     if (!search && page && pageSize) {
-      result = await SenstiveWordsModel.findAndCountAll({ offset, limit });
+      result = await sensitivewordsModel.findAndCountAll({ offset, limit });
     }
     if (search && page && pageSize) {
-      result = await SenstiveWordsModel.findAndCountAll({
+      result = await sensitivewordsModel.findAndCountAll({
         where: {
           [Op.or]: { word: search }
         },
@@ -28,7 +27,7 @@ class SensitiveSerivce {
       });
     }
     if (search && (!page || !pageSize)) {
-      result = await SenstiveWordsModel.findAll({
+      result = await sensitivewordsModel.findAll({
         where: {
           [Op.or]: { word: search }
         }
@@ -41,7 +40,7 @@ class SensitiveSerivce {
   }
 
   static async removeWordInDb(id: bigint) {
-    return await SenstiveWordsModel.destroy({
+    return await sensitivewordsModel.destroy({
       where: {
         id: id
       }
@@ -49,11 +48,11 @@ class SensitiveSerivce {
   }
 
   static async getAllWords() {
-    return await SenstiveWordsModel.findAll();
+    return await sensitivewordsModel.findAll();
   }
 
   static async getWordById(id: bigint) {
-    return await SenstiveWordsModel.findOne({ where: { id } });
+    return await sensitivewordsModel.findOne({ where: { id } });
   }
 }
 
