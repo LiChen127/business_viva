@@ -11,7 +11,8 @@ import { responseFormatHandler } from '@/utils/responseFormatHandler';
 import { UserExpData, ActionToIncrementUserExp, ActionToIncrementUserExpTypeSet } from '@/types/userStatusType';
 
 export default class UserProfileController {
-  // @todo 清理缓存的逻辑补上，抽离RedisKey的逻辑补上，日志系统重构
+  static readonly getOneUserProfileKey = (userId: string) => RedisHelper.defineKey('userProfile', userId);
+  static readonly getAllUserProfileKey = (userId: string) => RedisHelper.defineKey('allUserProfile', userId);
   static async setUserProfile(req: Request, res: Response) {
     const { userId, gender, age, location, introduction, moodStatus } = req.body;
     if (!userId || !gender || !age || !location || !introduction || !moodStatus) {
@@ -26,6 +27,11 @@ export default class UserProfileController {
         moodStatus,
       }
       logUserAction('setUserProfile', userId, userProfile);
+      // 清除redis缓存
+      await Promise.all([
+        RedisHelper.delete(UserProfileController.getOneUserProfileKey(userId)),
+        RedisHelper.delete(UserProfileController.getAllUserProfileKey(userId)),
+      ]);
       await UserProfileService.setUserProfile(userId, userProfile);
       return responseFormatHandler(res, 200, '设置用户信息成功');
     } catch (error) {
@@ -89,7 +95,7 @@ export default class UserProfileController {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
-      const redisKey = RedisHelper.defineKey(userId, 'userProfile');
+      const redisKey = UserProfileController.getOneUserProfileKey(userId);
       const userProfile = await RedisHelper.get(redisKey);
       if (userProfile) {
         return responseFormatHandler(res, 200, '获取成功', {
@@ -119,9 +125,11 @@ export default class UserProfileController {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
-      const redisKey = RedisHelper.defineKey(userId, 'userProfile');
       // 清一下缓存
-      await RedisHelper.delete(redisKey);
+      await Promise.all([
+        RedisHelper.delete(UserProfileController.getOneUserProfileKey(userId)),
+        RedisHelper.delete(UserProfileController.getAllUserProfileKey(userId)),
+      ]);
       const newuseProfile = {
         gender,
         age,
@@ -243,7 +251,7 @@ export default class UserProfileController {
     const { userId } = req.query as {
       userId: string;
     }
-    const redisKey = RedisHelper.defineKey(userId, 'allUserProfile');
+    const redisKey = UserProfileController.getAllUserProfileKey(userId);
     if (!userId) {
       return responseFormatHandler(res, 400, '缺少userId');
     }
@@ -276,6 +284,11 @@ export default class UserProfileController {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
     try {
+      // 清除redis缓存
+      await Promise.all([
+        RedisHelper.delete(UserProfileController.getOneUserProfileKey(userId)),
+        RedisHelper.delete(UserProfileController.getAllUserProfileKey(userId)),
+      ]);
       const [user, targetUser] = await Promise.all([
         UserService.getUserById(userId),
         UserService.getUserById(targetUserId),
@@ -319,6 +332,11 @@ export default class UserProfileController {
       if (!userProfile) {
         return responseFormatHandler(res, 400, '该用户未填写信息');
       }
+      // 清除redis缓存
+      await Promise.all([
+        RedisHelper.delete(UserProfileController.getOneUserProfileKey(userId)),
+        RedisHelper.delete(UserProfileController.getAllUserProfileKey(userId)),
+      ]);
       await UserProfileService.incrementUserLevel(userId);
       return responseFormatHandler(res, 200, '升级成功');
     } catch (error) {
@@ -367,6 +385,11 @@ export default class UserProfileController {
           targetExpPoint: targetExpPoint,
         });
       }
+      // 清除redis缓存
+      await Promise.all([
+        RedisHelper.delete(UserProfileController.getOneUserProfileKey(userId)),
+        RedisHelper.delete(UserProfileController.getAllUserProfileKey(userId)),
+      ]);
       // 算出总的经验值
       const computedExp = currentExp + targetExp;
       const result = await UserProfileService.updateUserExperiencePoints(userId, computedExp);
@@ -407,23 +430,15 @@ export default class UserProfileController {
       return responseFormatHandler(res, 500, '服务端错误');
     }
   }
-
+  // 获取用户等级和经验值(不需要加缓存, 前端缓存吧)
   static async getUserLevelAndExp(req: Request, res: Response) {
     const { userId } = req.query as {
       userId: string;
-    }
+    };
     if (!userId) {
       return responseFormatHandler(res, 400, '缺少参数');
     }
     try {
-      const redisKey = RedisHelper.defineKey(userId, 'userLevelAndExp');
-      const redisValue = await RedisHelper.get(redisKey);
-      if (redisValue) {
-        return responseFormatHandler(res, 200, '请求成功', {
-          data: redisValue,
-          dataFrom: 'redis'
-        });
-      }
       const user = await UserService.getUserById(userId);
       if (!user) {
         return responseFormatHandler(res, 400, '该用户不存在');
@@ -440,8 +455,7 @@ export default class UserProfileController {
         currentExp: currentExp,
         currentExpPoint: targetExpPoint.experiencePoints,
         nextLevel: targetExpPoint.score + 1,
-      }
-      await RedisHelper.set(redisKey, result, 60 * 10 * 24); // 1天
+      };
       return responseFormatHandler(res, 200, '请求成功', {
         data: result,
         dataFrom: 'db'
