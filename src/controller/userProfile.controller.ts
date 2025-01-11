@@ -256,6 +256,13 @@ export default class UserProfileController {
       return responseFormatHandler(res, 400, '缺少userId');
     }
     try {
+      const user = await UserService.getUserById(userId);
+      if (!user) {
+        return responseFormatHandler(res, 400, '用户不存在');
+      }
+      if (user.role !== 'admin' && user.role !== 'superAdmin') {
+        return responseFormatHandler(res, 400, '该用户没有权限');
+      }
       const redisValue = await RedisHelper.get(redisKey);
       if (redisValue) {
         return responseFormatHandler(res, 200, '请求成功', {

@@ -33,7 +33,7 @@ AdminRouter.get('/getUserInfo/:userId', authMiddleware, async (req, res) => {
   logAPICall('getUserInfo', req.url, req.body);
   await UserController.getUserInfo(req, res);
 });
-// 删除用户
+// 注销用户
 AdminRouter.delete('/deleteUser/:userId', authMiddleware, async (req, res) => {
   logAPICall('deleteUser', req.url, req.body);
   await UserController.deleteUser(req, res);

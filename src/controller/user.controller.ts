@@ -7,19 +7,17 @@ import RedisHelper from '@/utils/redisHelper';
 import bcrypt from 'bcryptjs';
 import logger, { logUserAction, logError, logAPICall, } from '@/utils/logger';
 import { responseFormatHandler } from '@/utils/responseFormatHandler';
+import { sequelize } from '@/config/sequelize.config';
+import { usernameRegex, passwordRegex } from '@/utils/regexp';
 
 /**
  * 用户相关
  */
 
 export default class UserController {
-  // static salt = crypto.randomBytes(16).toString('hex');
-  static saltRounds = 10;
-  /**
-   * 用户注册
-   * @param req 
-   * @param res 
-   */
+  // 用户登录注册的密码加盐值
+  static readonly saltRounds = 10;
+  // 用户注册
   static async signUp(req: Request, res: Response) {
     const { username, nickname, password, role } = req.body as {
       username: string;
@@ -30,6 +28,13 @@ export default class UserController {
     if (!username || !nickname || !password || !role) {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
+    // 正则验证
+    if (!usernameRegex.test(username)) {
+      return responseFormatHandler(res, 400, '用户名格式错误');
+    }
+    if (!passwordRegex.test(password)) {
+      return responseFormatHandler(res, 400, '密码格式错误');
+    }
     // 密码加密
     const passwordHash = await bcrypt.hash(password, UserController.saltRounds);
     const user = {
@@ -38,10 +43,13 @@ export default class UserController {
       passwordHash,
       role,
     } as User;
-
+    let transaction;
     try {
+      // 事务处理
+      logUserAction('SIGNUP_start_mysql_transaction', username);
+      transaction = await sequelize.transaction();
       if (await UserService.getUserByUsername(username)) {
-        return responseFormatHandler(res, 400, '该用户已存在');
+        return responseFormatHandler(res, 400, '已经存在重复的手机号');
       }
       const newUser = await UserService.createUser(user);
       logUserAction('SIGNUP', newUser.id, {
@@ -59,6 +67,7 @@ export default class UserController {
         error as Error,
         { username, nickname }
       )
+      await transaction?.rollback();
       return responseFormatHandler(res, 500, '注册失败');
     }
   }
@@ -95,8 +104,13 @@ export default class UserController {
       if (!userInfo) {
         return responseFormatHandler(res, 404, '用户不存在');
       }
+      // 验证用户名
+      if (userInfo.username !== username) {
+        return responseFormatHandler(res, 401, '用户名错误');
+      }
       // 验证密码
       const storedHash = userInfo.passwordHash;
+      // 加盐密码验证
       const isMatch = await bcrypt.compare(password, storedHash);
       if (!isMatch) {
         return responseFormatHandler(res, 401, '密码错误');
@@ -112,7 +126,6 @@ export default class UserController {
       logUserAction('login', userId, {
         username: userInfo.username,
       });
-
       return responseFormatHandler(res, 200, '登录成功');
     } catch (error) {
       console.error(error);
@@ -155,7 +168,6 @@ export default class UserController {
 
   static async updateUserInfo(req: Request, res: Response) {
     const userId = req.params.userId;
-    const startTime = Date.now();
     if (!userId) {
       return responseFormatHandler(res, 400, '缺少必要参数');
     }
